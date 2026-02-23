@@ -23,3 +23,29 @@ button{background:#334155;color:white;border:none;padding:5px 10px;border-radius
 table{width:100%;border-collapse:collapse}
 td,th{padding:10px;border-bottom:1px solid #334155;text-align:left;font-size:13px}
 input{background:#1e293b;border:1px solid #334155;color:white;padding:4px;width:70px}
+
+/* Result dropdown styling */
+.result-select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+}
+
+.result-select.pending {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.result-select.won {
+  background: #064e3b;
+  color: #22c55e;
+}
+
+.result-select.lost {
+  background: #7f1d1d;
+  color: #ef4444;
+}
+
+.profit-win { color: #22c55e; font-weight: 600; }
+.profit-loss { color: #ef4444; font-weight: 600; }

@@ -3,7 +3,6 @@ const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
 const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
 const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-// Persist starting bankroll
 const savedBankroll = localStorage.getItem("starting_bankroll");
 if(savedBankroll){
   document.getElementById("startingBankroll").value = savedBankroll;
@@ -80,13 +79,13 @@ html+=`<tr>
 <td>${row.match}</td>
 <td><input type="number" value="${row.stake}" onchange="updateStake(${row.id},this.value)"/></td>
 <td>
-<select onchange="updateResult(${row.id},this.value)">
-<option ${row.result==="pending"?"selected":""}>pending</option>
-<option ${row.result==="won"?"selected":""}>won</option>
-<option ${row.result==="lost"?"selected":""}>lost</option>
+<select class="result-select ${row.result}" onchange="updateResult(${row.id},this.value)">
+<option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
+<option value="won" ${row.result==="won"?"selected":""}>won</option>
+<option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
 </select>
 </td>
-<td>£${p.toFixed(2)}</td>
+<td class="${p > 0 ? 'profit-win' : p < 0 ? 'profit-loss' : ''}">£${p.toFixed(2)}</td>
 </tr>`;
 });
 
