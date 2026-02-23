@@ -23,6 +23,11 @@
 </section>
 
 <section id="trackerSection" style="display:none;">
+
+<button id="toggleTracker" class="collapse-btn">Open Tracker ▼</button>
+
+<div id="trackerContent" style="display:none;">
+
 <div class="tracker-controls">
 <label>Starting Bankroll</label>
 <input type="number" id="startingBankroll" value="1000"/>
@@ -30,13 +35,12 @@
 </div>
 
 <div class="stats-grid">
-<div>Bankroll<br><strong>£<span id="bankroll">0</span></strong></div>
-<div>Profit<br><strong>£<span id="profit">0</span></strong></div>
+<div>Current Bankroll<br><strong>£<span id="bankroll">0</span></strong></div>
+<div>Total Profit<br><strong>£<span id="profit">0</span></strong></div>
 <div>ROI<br><strong><span id="roi">0</span>%</strong></div>
 <div>Win Rate<br><strong><span id="winrate">0</span>%</strong></div>
 <div>Won<br><strong><span id="wins">0</span></strong></div>
 <div>Lost<br><strong><span id="losses">0</span></strong></div>
-<div>Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
 </div>
 
 <canvas id="chart"></canvas>
@@ -45,6 +49,7 @@
 <div id="trackerTable"></div>
 </div>
 
+</div>
 </section>
 
 <script src="app.js"></script>
