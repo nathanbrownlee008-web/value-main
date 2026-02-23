@@ -5,35 +5,26 @@ body{background:#0f172a;color:#e2e8f0;font-family:Inter,sans-serif;margin:0;padd
 text-shadow:0 1px 0 #065f46,0 2px 0 #065f46,0 3px 0 #065f46,
 0 4px 10px rgba(0,255,140,0.7),0 0 30px rgba(0,255,140,1);
 margin-bottom:20px}
-
 .tabs button{background:#1e293b;border:none;padding:8px 16px;border-radius:8px;color:white;margin:0 5px;cursor:pointer}
 .tabs button.active{background:#334155}
-
 .bets-grid{display:grid;gap:14px}
 .card{background:#1e293b;padding:16px;border-radius:14px;transition:0.3s}
 .card:hover{transform:translateY(-5px)}
 .value-badge{background:#065f46;color:#22c55e;padding:3px 8px;border-radius:6px;font-size:12px;margin-left:6px}
-
 button{background:#334155;color:white;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px}
-
 .tracker-controls{display:flex;gap:15px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
-
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;margin-bottom:25px}
 .stat-card{background:#1e293b;padding:16px;border-radius:14px;text-align:center;transition:0.3s}
 .glow-green{box-shadow:0 0 20px rgba(34,197,94,0.5)}
 .glow-red{box-shadow:0 0 20px rgba(239,68,68,0.5)}
-
 .tracker-table-wrapper{margin-top:20px;overflow-x:auto}
 table{width:100%;border-collapse:collapse}
 td,th{padding:10px;border-bottom:1px solid #334155;text-align:left;font-size:13px}
 input{background:#1e293b;border:1px solid #334155;color:white;padding:6px;width:70px;border-radius:6px}
-
 .result-select{padding:6px 10px;border-radius:8px;border:none;font-weight:600}
 .result-select.pending{background:#334155;color:#e2e8f0}
 .result-select.won{background:#064e3b;color:#22c55e}
 .result-select.lost{background:#7f1d1d;color:#ef4444}
-
 .profit-win{color:#22c55e;font-weight:600;text-shadow:0 0 8px rgba(34,197,94,0.7)}
 .profit-loss{color:#ef4444;font-weight:600;text-shadow:0 0 8px rgba(239,68,68,0.7)}
-
 .delete-btn{background:#7f1d1d;padding:4px 8px;border-radius:6px}
