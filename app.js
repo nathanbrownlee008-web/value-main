@@ -34,9 +34,13 @@ async function loadBets(){
 const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
 betsGrid.innerHTML="";
 data.forEach(row=>{
+let estProb=0.6;
+let fairOdds=(1/estProb);
+let value=((row.odds-fairOdds)/fairOdds*100).toFixed(1);
 const card=document.createElement("div");
 card.className="card";
 card.innerHTML=`
+${value>3?'<div class="value-badge">+'+value+'%</div>':''}
 <h3>${row.match}</h3>
 <p>${row.market} • ${row.bet_date}</p>
 <p>Odds: ${row.odds}</p>
@@ -72,9 +76,9 @@ datasets:[{
 data:history,
 tension:0.4,
 fill:true,
-backgroundColor:"rgba(34,197,94,0.15)",
+backgroundColor:"rgba(34,197,94,0.12)",
 borderColor:"#22c55e",
-borderWidth:3
+borderWidth:2
 }]
 },
 options:{responsive:true,plugins:{legend:{display:false}}}
@@ -88,15 +92,13 @@ let start=parseFloat(startingBankroll.value);
 let bankroll=start;
 let profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
 
-let html="<table><tr><th>Match</th><th>Stake</th><th>Result</th><th>Profit</th><th></th></tr>";
+let html="<table><tr><th>Match</th><th>Stake</th><th>Result</th><th>Profit</th></tr>";
 
 data.forEach(row=>{
 let p=0;
 if(row.result==="won"){p=row.stake*(row.odds-1);wins++;}
 if(row.result==="lost"){p=-row.stake;losses++;}
-profit+=p;
-totalStake+=row.stake;
-totalOdds+=row.odds;
+profit+=p; totalStake+=row.stake; totalOdds+=row.odds;
 bankroll=start+profit;
 history.push(bankroll);
 
@@ -110,8 +112,10 @@ html+=`<tr>
 <option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
 </select>
 </td>
-<td class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</td>
-<td><button class="delete-btn" onclick="deleteBet('${row.id}')">X</button></td>
+<td class="profit-cell">
+<span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
+<button class="delete-btn" onclick="deleteBet('${row.id}')">✕</button>
+</td>
 </tr>`;
 });
 
