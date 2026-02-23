@@ -1,0 +1,25 @@
+
+body{background:#0f172a;color:#e2e8f0;font-family:Inter,sans-serif;margin:0;padding:20px}
+.main-header{text-align:center;margin-bottom:30px}
+.logo-3d{font-size:42px;font-weight:800;color:#ffffff;
+text-shadow:
+0 1px 0 #065f46,
+0 2px 0 #065f46,
+0 3px 0 #065f46,
+0 4px 10px rgba(0,255,140,0.7),
+0 0 25px rgba(0,255,140,0.9);
+margin-bottom:20px}
+.tabs button{background:#1e293b;border:none;padding:8px 16px;border-radius:8px;color:white;margin:0 5px;cursor:pointer}
+.tabs button.active{background:#334155}
+.bets-grid{display:grid;gap:12px}
+.card{background:#1e293b;padding:12px 14px;border-radius:10px;line-height:1.3}
+.card h3{margin:0 0 4px 0;font-size:16px}
+.card p{margin:2px 0;font-size:13px}
+button{background:#334155;color:white;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:13px}
+.tracker-controls{display:flex;gap:15px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px;margin-bottom:25px}
+.stats-grid div{background:#1e293b;padding:12px;border-radius:10px;text-align:center;font-size:13px}
+.tracker-table-wrapper{margin-top:20px;overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+td,th{padding:10px;border-bottom:1px solid #334155;text-align:left;font-size:13px}
+input{background:#1e293b;border:1px solid #334155;color:white;padding:4px;width:70px}
