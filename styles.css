@@ -227,3 +227,20 @@ th{text-align:left}
   max-height:600px;
   opacity:1;
 }
+
+.monthly-breakdown{margin-top:20px}
+.monthly-toggle{
+  background:#1e293b;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  display:flex;
+  justify-content:space-between;
+}
+#monthlyWrapper{
+  overflow:hidden;
+  transition:max-height 0.35s ease, opacity 0.25s ease;
+}
+#monthlyWrapper.collapsed{max-height:0;opacity:0}
+#monthlyWrapper.expanded{max-height:2000px;opacity:1}
