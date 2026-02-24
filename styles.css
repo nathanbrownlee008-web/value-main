@@ -47,3 +47,25 @@ th{text-align:left}
   color:#cbd5e1;
   border:1px solid #334155;
 }
+
+
+/* Collapsible Tracker */
+.tracker-history{
+  margin-top:20px;
+}
+
+.tracker-toggle{
+  background:#1e293b;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  transition:0.2s ease;
+}
+
+.tracker-toggle:hover{
+  background:#243044;
+}

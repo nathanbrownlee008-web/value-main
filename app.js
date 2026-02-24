@@ -155,3 +155,17 @@ a.click();
 
 loadBets();
 loadTracker();
+
+
+function toggleTracker(){
+  const table = document.getElementById("trackerTable");
+  const arrow = document.getElementById("trackerArrow");
+
+  if(table.style.display === "none"){
+    table.style.display = "block";
+    arrow.innerText = "▲";
+  } else {
+    table.style.display = "none";
+    arrow.innerText = "▼";
+  }
+}
