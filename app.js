@@ -453,3 +453,19 @@ function rowProfit(row){
   if(row.result === "lost") return -row.stake;
   return 0;
 }
+
+
+function toggleInsights(){
+  const content = document.getElementById("insightsContent");
+  const arrow = document.getElementById("insightsArrow");
+
+  if(content.classList.contains("insights-collapsed")){
+    content.classList.remove("insights-collapsed");
+    content.classList.add("insights-expanded");
+    arrow.innerText="▲";
+  }else{
+    content.classList.remove("insights-expanded");
+    content.classList.add("insights-collapsed");
+    arrow.innerText="▼";
+  }
+}
