@@ -43,9 +43,12 @@
 
 <div class="tracker-history">
   <div class="tracker-toggle" onclick="toggleTracker()">
-    📊 Tracker History <span id="trackerArrow">▼</span>
+    📊 Tracker History (<span id="betCount">0</span>)
+    <span id="trackerArrow">▼</span>
   </div>
-  <div id="trackerTable" style="display:none;"></div>
+  <div id="trackerWrapper" class="collapsed">
+    <div id="trackerTable"></div>
+  </div>
 </div>
 
 

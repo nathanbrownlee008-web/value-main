@@ -56,7 +56,7 @@ const ctx=document.getElementById("chart").getContext("2d");
 chart=new Chart(ctx,{
 type:"line",
 data:{
-labels:history.map((_,i)=>i+1),
+labels:data.map(r=> new Date(r.created_at).toLocaleDateString()),
 datasets:[{
 data:history,
 tension:0.25,
@@ -67,7 +67,17 @@ borderWidth:2,
 pointRadius:0
 }]
 },
-options:{responsive:true,plugins:{legend:{display:false}}}
+options:{
+        responsive:true,
+        plugins:{legend:{display:false}},
+        scales:{
+            y:{
+                ticks:{
+                    callback:function(value){return '£'+value;}
+                }
+            }
+        }
+    }
 });
 }
 
@@ -157,15 +167,53 @@ loadBets();
 loadTracker();
 
 
+// Toggle with animation + memory
 function toggleTracker(){
-  const table = document.getElementById("trackerTable");
+  const wrapper = document.getElementById("trackerWrapper");
   const arrow = document.getElementById("trackerArrow");
 
-  if(table.style.display === "none"){
-    table.style.display = "block";
-    arrow.innerText = "▲";
-  } else {
-    table.style.display = "none";
-    arrow.innerText = "▼";
+  if(wrapper.classList.contains("collapsed")){
+    wrapper.classList.remove("collapsed");
+    wrapper.classList.add("expanded");
+    arrow.innerText="▲";
+    localStorage.setItem("tracker_open","true");
+  }else{
+    wrapper.classList.remove("expanded");
+    wrapper.classList.add("collapsed");
+    arrow.innerText="▼";
+    localStorage.setItem("tracker_open","false");
   }
 }
+
+// Restore state on load
+document.addEventListener("DOMContentLoaded",function(){
+  const wrapper=document.getElementById("trackerWrapper");
+  const arrow=document.getElementById("trackerArrow");
+  const open=localStorage.getItem("tracker_open");
+  if(open==="true"){
+    wrapper.classList.remove("collapsed");
+    wrapper.classList.add("expanded");
+    arrow.innerText="▲";
+  }
+});
+
+// Extend loadTracker to update bet count
+const originalLoadTracker = loadTracker;
+loadTracker = async function(){
+  await originalLoadTracker();
+  const rows=document.querySelectorAll("#trackerTable table tr").length-1;
+  const count=document.getElementById("betCount");
+  if(count && rows>=0){count.innerText=rows;}
+};
+
+
+// Force tracker open by default (still collapsible manually)
+document.addEventListener("DOMContentLoaded", function(){
+  const wrapper=document.getElementById("trackerWrapper");
+  const arrow=document.getElementById("trackerArrow");
+  if(wrapper){
+    wrapper.classList.remove("collapsed");
+    wrapper.classList.add("expanded");
+    arrow.innerText="▲";
+  }
+});

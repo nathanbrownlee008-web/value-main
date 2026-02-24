@@ -49,10 +49,8 @@ th{text-align:left}
 }
 
 
-/* Collapsible Tracker */
-.tracker-history{
-  margin-top:20px;
-}
+/* Enhanced Collapsible */
+.tracker-history{margin-top:20px}
 
 .tracker-toggle{
   background:#1e293b;
@@ -66,6 +64,19 @@ th{text-align:left}
   transition:0.2s ease;
 }
 
-.tracker-toggle:hover{
-  background:#243044;
+.tracker-toggle:hover{background:#243044}
+
+#trackerWrapper{
+  overflow:hidden;
+  transition:max-height 0.35s ease, opacity 0.25s ease;
+}
+
+#trackerWrapper.collapsed{
+  max-height:0;
+  opacity:0;
+}
+
+#trackerWrapper.expanded{
+  max-height:2000px;
+  opacity:1;
 }
