@@ -23,22 +23,9 @@ table{width:100%;border-collapse:collapse}
 th,td{padding:6px 4px;border-bottom:1px solid #334155;font-size:13px}
 th{text-align:left}
 
-.profit-col{
-  width:110px;
-  text-align:right;
-  white-space:nowrap;
-}
-
-.profit-content{
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-  gap:8px;
-  white-space:nowrap;
-}
+.profit-col{text-align:right;white-space:nowrap}
 
 .profit-win{color:#22c55e;font-weight:600}
 .profit-loss{color:#ef4444;font-weight:600}
-.delete-btn{background:none;border:none;color:#ef4444;cursor:pointer}
 
 .result-select{background:#1e293b;color:#fff;border:1px solid #334155;padding:4px;border-radius:6px}

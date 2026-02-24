@@ -94,13 +94,11 @@ html+=`<tr>
 <option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
 <option value="won" ${row.result==="won"?"selected":""}>won</option>
 <option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
+<option value="delete">🗑 delete</option>
 </select>
 </td>
 <td class="profit-col">
-<div class="profit-content">
 <span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
-<button class="delete-btn" onclick="deleteBet('${row.id}')">✕</button>
-</div>
 </td>
 </tr>`;
 });
@@ -129,13 +127,12 @@ loadTracker();
 }
 
 async function updateResult(id,val){
-await client.from("bet_tracker").update({result:val}).eq("id",id);
-loadTracker();
-}
-
-async function deleteBet(id){
-if(!confirm("Delete this bet?")) return;
+if(val==="delete"){
+if(!confirm("Delete this bet?")){loadTracker();return;}
 await client.from("bet_tracker").delete().eq("id",id);
+}else{
+await client.from("bet_tracker").update({result:val}).eq("id",id);
+}
 loadTracker();
 }
 
