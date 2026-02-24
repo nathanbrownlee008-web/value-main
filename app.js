@@ -17,6 +17,7 @@ tabTracker.onclick=()=>switchTab(false);
 
 function switchTab(show){
   initChartTabs();
+  initInsightDropdown();
 betsSection.style.display=show?"block":"none";
 trackerSection.style.display=show?"none":"block";
 tabBets.classList.toggle("active",show);
@@ -238,6 +239,8 @@ function toggleTracker(){
     arrow.innerText="▼";
     localStorage.setItem("tracker_open","false");
   }
+
+  updateInsightUI();
 }
 
 // Restore state on load
@@ -293,7 +296,7 @@ function renderMonthlyChart(monthlyBankroll, monthLabels){
   });
 }
 
-function renderMarketChart(labels, profit){
+function renderMarketChart(labels, winPct){
   const el = document.getElementById("marketChart");
   if(!el) return;
   if(marketChart) marketChart.destroy();
@@ -304,21 +307,43 @@ function renderMarketChart(labels, profit){
     data: {
       labels,
       datasets: [{
-        data: profit,
-        backgroundColor: "rgba(34,197,94,0.18)",
+        data: winPct,
+        backgroundColor: "rgba(34,197,94,0.16)",
         borderColor: "#22c55e",
         borderWidth: 2,
-        borderRadius: 10
+        borderRadius: 10,
+        barThickness: 18,
+        maxBarThickness: 18
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      indexAxis: "y",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx)=> `${ctx.parsed.x.toFixed(0)}% win rate`
+          }
+        }
+      },
       scales: {
-        y: { ticks: { callback: (v)=>'£'+v } }
+        x: {
+          min: 0,
+          max: 100,
+          ticks: { display: false },
+          grid: { display: false, drawBorder: false },
+          border: { display: false }
+        },
+        y: {
+          ticks: { color: "rgba(226,232,240,0.9)", font: { weight: "800" } },
+          grid: { display: false },
+          border: { display: false }
+        }
       }
-    }
+    },
+    plugins: [insideLabelPlugin]
   });
 }
 
@@ -353,4 +378,59 @@ function rowProfit(row){
   if(row.result === "won") return row.stake * (row.odds - 1);
   if(row.result === "lost") return -row.stake;
   return 0;
+}
+
+
+const insideLabelPlugin = {
+  id: "insideLabelPlugin",
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    const { ctx } = chart;
+    ctx.save();
+    const dataset = chart.data.datasets[0];
+    const meta = chart.getDatasetMeta(0);
+    meta.data.forEach((bar, i) => {
+      const val = dataset.data[i];
+      const label = (typeof val === "number") ? (val.toFixed(0) + "%") : String(val);
+      const pos = bar.tooltipPosition();
+      ctx.font = "800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.fillStyle = "rgba(226,232,240,0.95)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      // place inside bar near the end
+      ctx.fillText(label, pos.x - 18, pos.y);
+    });
+    ctx.restore();
+  }
+};
+
+
+function updateInsightUI(){
+  const sel = document.getElementById("insightSelect");
+  const labelEl = document.getElementById("insightLabel");
+  const valEl = document.getElementById("insightValue");
+  if(!sel || !labelEl || !valEl) return;
+
+  const map = {
+    bestMarket: { label: "Best Market", source: document.getElementById("bestMarket") },
+    worstMarket: { label: "Worst Market", source: document.getElementById("worstMarket") },
+    bestMonth: { label: "Best Month", source: document.getElementById("bestMonth") },
+    worstMonth: { label: "Worst Month", source: document.getElementById("worstMonth") }
+  };
+
+  const chosen = map[sel.value] || map.bestMarket;
+  labelEl.textContent = chosen.label;
+  const txt = chosen.source ? chosen.source.textContent : "—";
+  valEl.textContent = txt;
+
+  valEl.classList.remove("positive","negative");
+  if(txt.includes("+£")) valEl.classList.add("positive");
+  if(txt.includes("-£")) valEl.classList.add("negative");
+}
+
+
+function initInsightDropdown(){
+  const sel = document.getElementById("insightSelect");
+  if(!sel) return;
+  sel.addEventListener("change", updateInsightUI);
+  updateInsightUI();
 }

@@ -40,10 +40,23 @@
 </div>
 
 
-<div class="analytics-strip" id="analyticsStrip">
-  <div class="mini-card">
-    <div class="mini-label">Best Market</div>
-    <div class="mini-value" id="bestMarket">—</div>
+
+<div class="insights">
+  <div class="insights-head">
+    <div class="insights-title">Insights</div>
+    <select id="insightSelect" class="insight-select" aria-label="Select insight">
+      <option value="bestMarket">Best Market</option>
+      <option value="worstMarket">Worst Market</option>
+      <option value="bestMonth">Best Month</option>
+      <option value="worstMonth">Worst Month</option>
+    </select>
+  </div>
+  <div class="insight-card">
+    <div class="insight-label" id="insightLabel">Best Market</div>
+    <div class="insight-value" id="insightValue">—</div>
+  </div>
+</div>
+<div class="mini-value" id="bestMarket">—</div>
   </div>
   <div class="mini-card">
     <div class="mini-label">Worst Market</div>

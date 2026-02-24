@@ -162,3 +162,61 @@ th{text-align:left}
   opacity: 0.85;
   font-weight: 800;
 }
+
+
+/* Insights dropdown */
+.insights{
+  margin: 14px 0 10px 0;
+}
+
+.insights-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.insights-title{
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  opacity: 0.95;
+}
+
+.insight-select{
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: rgba(30,41,59,0.40);
+  border: 1px solid rgba(51,65,85,0.55);
+  color: #e2e8f0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.insight-card{
+  background: rgba(30,41,59,0.55);
+  border: 1px solid rgba(51,65,85,0.55);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+}
+
+.insight-label{
+  font-size: 12px;
+  opacity: 0.78;
+  margin-bottom: 8px;
+}
+
+.insight-value{
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.insight-value.positive{ color:#22c55e; }
+.insight-value.negative{ color:#ef4444; }
