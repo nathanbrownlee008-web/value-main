@@ -167,46 +167,24 @@ renderDailyChart(history, dailyLabels);
 const countElem = document.getElementById("betCount");
 if(countElem) countElem.textContent = String(data.length);
 
-// ===== TRUE Monthly Profit + ROI (Not Cumulative) =====
-const monthData = {};
+// Monthly profit aggregation
+const monthMap = {};
 data.forEach(r=>{
   const d = new Date(r.created_at);
-  const year = d.getFullYear();
-  const month = d.getMonth();
-  const key = year + "-" + month;
-
-  if(!monthData[key]) monthData[key] = {profit:0, stake:0};
-
-  const p = rowProfit(r);
-  monthData[key].profit += p;
-  monthData[key].stake += r.stake;
+  const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
 });
-
-const now = new Date();
-const currentYear = now.getFullYear();
-
-const monthLabels = [];
-const monthlyProfit = [];
-const monthlyROI = [];
-
-for(let m=0;m<12;m++){
-  const key = currentYear + "-" + m;
-  const label = new Date(currentYear,m,1)
-    .toLocaleDateString('en-GB',{month:'short'});
-  monthLabels.push(label);
-
-  if(monthData[key]){
-    const profit = monthData[key].profit;
-    const stake = monthData[key].stake;
-    monthlyProfit.push(profit);
-    monthlyROI.push(stake ? (profit/stake)*100 : 0);
-  }else{
-    monthlyProfit.push(0);
-    monthlyROI.push(0);
-  }
-}
-
-renderMonthlyChart(monthlyProfit, monthLabels, monthlyROI);
+const monthKeys = Object.keys(monthMap).sort();
+let run = 0;
+const monthLabels = monthKeys.map(k=>{
+  const [y,m]=k.split("-");
+  return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+});
+const monthlyBankroll = monthKeys.map(k=>{
+  run += monthMap[k];
+  return Number((start + run).toFixed(2));
+});
+renderMonthlyChart(monthlyBankroll, monthLabels);
 
 // Market profit aggregation
 const marketMap = {};
@@ -332,6 +310,7 @@ loadTracker = async function(){
 };
 
 
+
 function renderMonthlyChart(profits, labels, roi){
   const el = document.getElementById("monthlyChart");
   if(!el) return;
@@ -344,7 +323,7 @@ function renderMonthlyChart(profits, labels, roi){
     data:{
       labels:labels,
       datasets:[{
-        data:profits,
+        data:roi,
         borderRadius:6,
         backgroundColor:profits.map(v=>{
           if(v>0) return "rgba(34,197,94,0.85)";
@@ -356,39 +335,46 @@ function renderMonthlyChart(profits, labels, roi){
     options:{
       responsive:true,
       maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false}
-      },
+      plugins:{legend:{display:false}},
       scales:{
         y:{
-          beginAtZero:true,
-          ticks:{callback:(v)=>"£"+v}
+          ticks:{callback:(v)=>v+"%"},
+          beginAtZero:true
         }
       }
     },
     plugins:[{
-      id:"monthlyLabels",
       afterDatasetsDraw(chart){
         const {ctx} = chart;
         chart.getDatasetMeta(0).data.forEach((bar,i)=>{
-          const value = profits[i];
-          const x = bar.x;
-          const y = bar.y;
-
-          ctx.fillStyle="#ffffff";
-          ctx.font="12px system-ui";
+          ctx.fillStyle="#fff";
+          ctx.font="bold 12px system-ui";
           ctx.textAlign="center";
-
-          // £ above/below
-          ctx.fillText("£"+value.toFixed(0), x, value>=0? y-6 : y+16);
-
-          // ROI inside
-          ctx.fillText(Math.round(roi[i])+"%", x, value>=0? y+14 : y-6);
+          ctx.fillText("£"+profits[i].toFixed(0), bar.x, bar.y-6);
+          ctx.fillText(Math.round(roi[i])+"%", bar.x, bar.y+12);
         });
       }
     }]
   });
-}function renderMarketChart(labels, winPct, totals){
+
+  // Build Monthly Table
+  const table = document.getElementById("monthlyTable");
+  if(!table) return;
+
+  let html = "<table><tr><th>Month</th><th>Profit</th><th>ROI</th></tr>";
+  labels.forEach((m,i)=>{
+    const p = profits[i];
+    const r = roi[i];
+    html += `<tr>
+      <td>${m}</td>
+      <td class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</td>
+      <td>${r.toFixed(1)}%</td>
+    </tr>`;
+  });
+  html += "</table>";
+  table.innerHTML = html;
+}
+function renderMarketChart(labels, winPct, totals){
   const el = document.getElementById("marketChart");
   if(!el) return;
   if(marketChart) marketChart.destroy();
@@ -518,15 +504,17 @@ function toggleInsights(){
 }
 
 
-// Auto-close Insights when switching chart tabs
-document.addEventListener("click", function(e){
-  if(e.target.classList.contains("tab-btn")){
-    const content = document.getElementById("insightsContent");
-    const arrow = document.getElementById("insightsArrow");
-    if(content && !content.classList.contains("insights-collapsed")){
-      content.classList.remove("insights-expanded");
-      content.classList.add("insights-collapsed");
-      arrow.innerText="▼";
-    }
+function toggleMonthly(){
+  const wrapper = document.getElementById("monthlyWrapper");
+  const arrow = document.getElementById("monthlyArrow");
+
+  if(wrapper.classList.contains("collapsed")){
+    wrapper.classList.remove("collapsed");
+    wrapper.classList.add("expanded");
+    arrow.innerText="▲";
+  }else{
+    wrapper.classList.remove("expanded");
+    wrapper.classList.add("collapsed");
+    arrow.innerText="▼";
   }
-});
+}
