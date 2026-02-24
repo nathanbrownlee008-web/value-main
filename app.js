@@ -48,17 +48,15 @@ result:"pending"
 loadTracker();
 }
 
-let dailyChart;
-let monthlyChart;
-let marketChart;
+let chart;
 
-function renderDailyChart(history, labels){
-if(dailyChart) dailyChart.destroy();
+function renderChart(history){
+if(chart) chart.destroy();
 const ctx=document.getElementById("chart").getContext("2d");
-dailyChart=new Chart(ctx,{
+chart=new Chart(ctx,{
 type:"line",
 data:{
-labels: labels,
+labels:history.map((_,i)=>i+1),
 datasets:[{
 data:history,
 tension:0.25,
@@ -69,14 +67,7 @@ borderWidth:2,
 pointRadius:0
 }]
 },
-options:{responsive:true,plugins:{legend:{display:false}},
-        scales:{
-            y:{
-                ticks:{
-                    callback:function(value){return '£'+value;}
-                }
-            }
-        }}
+options:{responsive:true,plugins:{legend:{display:false}}}
 });
 }
 
@@ -129,61 +120,7 @@ profitCard.classList.remove("glow-green","glow-red");
 if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
-
-const labels = data.map(r => {
-  const d = new Date(r.created_at);
-  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
-});
-
-renderDailyChart(history, labels);
-
-const countElem = document.getElementById("betCount");
-if(countElem){ countElem.innerText = data.length; }
-
-
-// Monthly bankroll (end-of-month)
-const monthlyProfitMap = {};
-let runningMonthProfit = 0;
-data.forEach(row => {
-  let p = 0;
-  if(row.result === "won") p = row.stake * (row.odds - 1);
-  if(row.result === "lost") p = -row.stake;
-
-  const d = new Date(row.created_at);
-  const key = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
-  if(!monthlyProfitMap[key]) monthlyProfitMap[key] = 0;
-  monthlyProfitMap[key] += p;
-});
-
-const monthKeys = Object.keys(monthlyProfitMap).sort();
-let running = 0;
-const monthLabels = monthKeys.map(k => {
-  const [y,m] = k.split("-");
-  const d = new Date(parseInt(y,10), parseInt(m,10)-1, 1);
-  return d.toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
-});
-const monthlyBankroll = monthKeys.map(k => {
-  running += monthlyProfitMap[k];
-  return (start + running);
-});
-renderMonthlyChart(monthlyBankroll, monthLabels);
-
-// Market performance (profit by market) - top 8
-const marketMap = {};
-data.forEach(row => {
-  const market = (row.market && String(row.market).trim()) ? String(row.market).trim() : "Unknown";
-  let p = 0;
-  if(row.result === "won") p = row.stake * (row.odds - 1);
-  if(row.result === "lost") p = -row.stake;
-  if(!marketMap[market]) marketMap[market] = 0;
-  marketMap[market] += p;
-});
-let marketEntries = Object.entries(marketMap);
-marketEntries.sort((a,b) => Math.abs(b[1]) - Math.abs(a[1]));
-marketEntries = marketEntries.slice(0, 8);
-renderMarketChart(marketEntries.map(e=>e[0]), marketEntries.map(e=>Number(e[1].toFixed(2))));
-
-
+renderChart(history);
 }
 
 async function updateStake(id,val){
@@ -258,74 +195,3 @@ loadTracker = async function(){
   const count=document.getElementById("betCount");
   if(count && rows>=0){count.innerText=rows;}
 };
-
-
-document.addEventListener("DOMContentLoaded", function(){
-  const wrapper=document.getElementById("trackerWrapper");
-  const arrow=document.getElementById("trackerArrow");
-  if(wrapper){
-    wrapper.classList.remove("collapsed");
-    wrapper.classList.add("expanded");
-    arrow.innerText="▲";
-  }
-});
-
-
-function renderMonthlyChart(monthlyBankroll, monthLabels){
-  const el = document.getElementById("monthlyChart");
-  if(!el) return;
-  if(monthlyChart) monthlyChart.destroy();
-
-  const ctx = el.getContext("2d");
-  monthlyChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: monthLabels,
-      datasets: [{
-        data: monthlyBankroll,
-        tension: 0.25,
-        fill: true,
-        backgroundColor: "rgba(34,197,94,0.06)",
-        borderColor: "#22c55e",
-        borderWidth: 2,
-        pointRadius: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: {
-          ticks: { callback: function(value){ return "£" + value; } }
-        }
-      }
-    }
-  });
-}
-
-function renderMarketChart(marketLabels, marketProfit){
-  const el = document.getElementById("marketChart");
-  if(!el) return;
-  if(marketChart) marketChart.destroy();
-
-  const ctx = el.getContext("2d");
-  marketChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: marketLabels,
-      datasets: [{
-        data: marketProfit,
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: {
-          ticks: { callback: function(value){ return "£" + value; } }
-        }
-      }
-    }
-  });
-}

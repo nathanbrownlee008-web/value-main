@@ -80,25 +80,3 @@ th{text-align:left}
   max-height:2000px;
   opacity:1;
 }
-
-
-/* Extra charts */
-.chart-block{
-  margin: 16px 0 10px 0;
-  padding: 10px 12px;
-  background: rgba(30,41,59,0.55);
-  border: 1px solid rgba(51,65,85,0.55);
-  border-radius: 12px;
-}
-
-.chart-title{
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #e2e8f0;
-  letter-spacing: 0.2px;
-}
-
-#monthlyChart, #marketChart{
-  width: 100% !important;
-  height: 220px !important;
-}
