@@ -28,8 +28,7 @@ fill:true,
 backgroundColor:"rgba(34,197,94,0.08)",
 borderColor:"#22c55e",
 borderWidth:2,
-pointRadius:0,
-pointHoverRadius:4
+pointRadius:0
 }]
 },
 options:{responsive:true,plugins:{legend:{display:false}}}
@@ -38,6 +37,7 @@ options:{responsive:true,plugins:{legend:{display:false}}}
 
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
+
 let start=parseFloat(document.getElementById("startingBankroll").value);
 let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
 
@@ -52,8 +52,14 @@ bankroll=start+profit;history.push(bankroll);
 
 html+=`<tr>
 <td>${row.match}</td>
-<td>${row.stake}</td>
-<td>${row.result}</td>
+<td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
+<td>
+<select class="result-select" onchange="updateResult('${row.id}',this.value)">
+<option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
+<option value="won" ${row.result==="won"?"selected":""}>won</option>
+<option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
+</select>
+</td>
 <td class="profit-cell">
 <span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
 <button class="delete-btn" onclick="deleteBet('${row.id}')">✕</button>
@@ -77,6 +83,16 @@ if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
 renderChart(history);
+}
+
+async function updateStake(id,val){
+await client.from("bet_tracker").update({stake:parseFloat(val)}).eq("id",id);
+loadTracker();
+}
+
+async function updateResult(id,val){
+await client.from("bet_tracker").update({result:val}).eq("id",id);
+loadTracker();
 }
 
 async function deleteBet(id){
