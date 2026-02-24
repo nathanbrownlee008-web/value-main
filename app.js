@@ -356,8 +356,16 @@ function renderMarketChart(labels, winPct, totals){
         borderWidth: 0,
         borderRadius: 10,
         barThickness: 18,
-        backgroundColor: "rgba(34,197,94,0.20)",
-        borderColor: "#22c55e"
+        backgroundColor: winPct.map(v=>{
+          if(v >= 55) return "rgba(34,197,94,0.85)";   // green
+          if(v >= 40) return "rgba(245,158,11,0.85)";  // amber
+          return "rgba(239,68,68,0.85)";               // red
+        }),
+        borderColor: winPct.map(v=>{
+          if(v >= 55) return "#22c55e";
+          if(v >= 40) return "#f59e0b";
+          return "#ef4444";
+        })
       }]
     },
     options: {
