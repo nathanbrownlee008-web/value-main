@@ -53,13 +53,13 @@ let dailyChart;
 let monthlyChart;
 let marketChart;
 
-function renderDailyChart(history){
+function renderDailyChart(history, labels){
 if(dailyChart) dailyChart.destroy();
 const ctx=document.getElementById("chart").getContext("2d");
 dailyChart=new Chart(ctx,{
 type:"line",
 data:{
-labels:history.map((_,i)=>i+1),
+labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
 datasets:[{
 data:history,
 tension:0.25,
@@ -124,8 +124,69 @@ profitCard.classList.remove("glow-green","glow-red");
 if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
-renderDailyChart(history);
+
+// Daily labels as dates
+const dailyLabels = data.map(r=>{
+  const d = new Date(r.created_at);
+  return d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
+});
+renderDailyChart(history, dailyLabels);
+
+// ---- Monthly & Market analytics (tabs + mini summary) ----
+const countElem = document.getElementById("betCount");
+if(countElem) countElem.textContent = String(data.length);
+
+// Monthly profit aggregation
+const monthMap = {};
+data.forEach(r=>{
+  const d = new Date(r.created_at);
+  const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
+});
+const monthKeys = Object.keys(monthMap).sort();
+let run = 0;
+const monthLabels = monthKeys.map(k=>{
+  const [y,m]=k.split("-");
+  return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+});
+const monthlyBankroll = monthKeys.map(k=>{
+  run += monthMap[k];
+  return Number((start + run).toFixed(2));
+});
+renderMonthlyChart(monthlyBankroll, monthLabels);
+
+// Market profit aggregation
+const marketMap = {};
+data.forEach(r=>{
+  const mk = (r.market && String(r.market).trim()) ? String(r.market).trim() : "Unknown";
+  marketMap[mk] = (marketMap[mk]||0) + rowProfit(r);
+});
+let entries = Object.entries(marketMap);
+entries.sort((a,b)=>Math.abs(b[1]) - Math.abs(a[1]));
+entries = entries.slice(0,8);
+renderMarketChart(entries.map(e=>e[0]), entries.map(e=>Number(e[1].toFixed(2))));
+
+// Mini summary
+if(entries.length){
+  const bestM = [...Object.entries(marketMap)].sort((a,b)=>b[1]-a[1])[0];
+  const worstM = [...Object.entries(marketMap)].sort((a,b)=>a[1]-b[1])[0];
+  setMiniValue("bestMarket", bestM[0]+":", (bestM[1] >= 0 ? "+£" : "-£") + Math.abs(bestM[1]).toFixed(2));
+  setMiniValue("worstMarket", worstM[0]+":", (worstM[1] >= 0 ? "+£" : "-£") + Math.abs(worstM[1]).toFixed(2));
 }
+if(monthKeys.length){
+  const monthEntries = monthKeys.map(k=>[k, monthMap[k]]);
+  const bestMo = [...monthEntries].sort((a,b)=>b[1]-a[1])[0];
+  const worstMo = [...monthEntries].sort((a,b)=>a[1]-b[1])[0];
+  const fmtMonth = (k)=>{
+    const [y,m]=k.split("-");
+    return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+  };
+  setMiniValue("bestMonth", fmtMonth(bestMo[0])+":", (bestMo[1] >= 0 ? "+£" : "-£") + Math.abs(bestMo[1]).toFixed(2));
+  setMiniValue("worstMonth", fmtMonth(worstMo[0])+":", (worstMo[1] >= 0 ? "+£" : "-£") + Math.abs(worstMo[1]).toFixed(2));
+}
+
+}
+
 
 async function updateStake(id,val){
 await client.from("bet_tracker").update({stake:parseFloat(val)}).eq("id",id);
