@@ -16,6 +16,7 @@ tabBets.onclick=()=>switchTab(true);
 tabTracker.onclick=()=>switchTab(false);
 
 function switchTab(show){
+  initChartTabs();
 betsSection.style.display=show?"block":"none";
 trackerSection.style.display=show?"none":"block";
 tabBets.classList.toggle("active",show);
@@ -48,12 +49,14 @@ result:"pending"
 loadTracker();
 }
 
-let chart;
+let dailyChart;
+let monthlyChart;
+let marketChart;
 
-function renderChart(history){
-if(chart) chart.destroy();
+function renderDailyChart(history){
+if(dailyChart) dailyChart.destroy();
 const ctx=document.getElementById("chart").getContext("2d");
-chart=new Chart(ctx,{
+dailyChart=new Chart(ctx,{
 type:"line",
 data:{
 labels:history.map((_,i)=>i+1),
@@ -67,7 +70,8 @@ borderWidth:2,
 pointRadius:0
 }]
 },
-options:{responsive:true,plugins:{legend:{display:false}}}
+options:{responsive:true,
+        maintainAspectRatio:false,plugins:{legend:{display:false}}}
 });
 }
 
@@ -120,7 +124,7 @@ profitCard.classList.remove("glow-green","glow-red");
 if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
-renderChart(history);
+renderDailyChart(history);
 }
 
 async function updateStake(id,val){
@@ -195,3 +199,97 @@ loadTracker = async function(){
   const count=document.getElementById("betCount");
   if(count && rows>=0){count.innerText=rows;}
 };
+
+
+function renderMonthlyChart(monthlyBankroll, monthLabels){
+  const el = document.getElementById("monthlyChart");
+  if(!el) return;
+  if(monthlyChart) monthlyChart.destroy();
+
+  const ctx = el.getContext("2d");
+  monthlyChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        data: monthlyBankroll,
+        tension: 0.25,
+        fill: true,
+        backgroundColor: "rgba(34,197,94,0.08)",
+        borderColor: "#22c55e",
+        borderWidth: 2,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: (v)=>'£'+v } }
+      }
+    }
+  });
+}
+
+function renderMarketChart(labels, profit){
+  const el = document.getElementById("marketChart");
+  if(!el) return;
+  if(marketChart) marketChart.destroy();
+
+  const ctx = el.getContext("2d");
+  marketChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: profit,
+        backgroundColor: "rgba(34,197,94,0.18)",
+        borderColor: "#22c55e",
+        borderWidth: 2,
+        borderRadius: 10
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: (v)=>'£'+v } }
+      }
+    }
+  });
+}
+
+function setMiniValue(id, label, value){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = label + " " + value;
+  el.classList.remove("positive","negative");
+  if(value.startsWith("+£")) el.classList.add("positive");
+  if(value.startsWith("-£")) el.classList.add("negative");
+}
+
+
+function initChartTabs(){
+  const btns = document.querySelectorAll(".tab-btn");
+  if(!btns.length) return;
+
+  btns.forEach(b=>{
+    b.addEventListener("click", ()=>{
+      btns.forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      const tab = b.getAttribute("data-tab");
+      document.querySelectorAll(".chart-pane").forEach(p=>p.classList.remove("active"));
+      const pane = document.getElementById("pane-"+tab);
+      if(pane) pane.classList.add("active");
+    });
+  });
+}
+
+
+function rowProfit(row){
+  if(row.result === "won") return row.stake * (row.odds - 1);
+  if(row.result === "lost") return -row.stake;
+  return 0;
+}

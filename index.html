@@ -39,7 +39,44 @@
 <div class="stat-card">Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
 </div>
 
-<canvas id="chart"></canvas>
+
+<div class="analytics-strip" id="analyticsStrip">
+  <div class="mini-card">
+    <div class="mini-label">Best Market</div>
+    <div class="mini-value" id="bestMarket">—</div>
+  </div>
+  <div class="mini-card">
+    <div class="mini-label">Worst Market</div>
+    <div class="mini-value" id="worstMarket">—</div>
+  </div>
+  <div class="mini-card">
+    <div class="mini-label">Best Month</div>
+    <div class="mini-value" id="bestMonth">—</div>
+  </div>
+  <div class="mini-card">
+    <div class="mini-label">Worst Month</div>
+    <div class="mini-value" id="worstMonth">—</div>
+  </div>
+</div>
+
+<div class="chart-tabs" role="tablist" aria-label="Tracker charts">
+  <button class="tab-btn active" data-tab="daily">Daily</button>
+  <button class="tab-btn" data-tab="monthly">Monthly</button>
+  <button class="tab-btn" data-tab="market">Markets</button>
+</div>
+
+<div class="chart-wrap">
+  <div class="chart-pane active" id="pane-daily">
+    <canvas id="chart"></canvas>
+  </div>
+  <div class="chart-pane" id="pane-monthly">
+    <canvas id="monthlyChart"></canvas>
+  </div>
+  <div class="chart-pane" id="pane-market">
+    <canvas id="marketChart"></canvas>
+  </div>
+</div>
+
 
 <div class="tracker-history">
   <div class="tracker-toggle" onclick="toggleTracker()">
