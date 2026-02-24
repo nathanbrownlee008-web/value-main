@@ -310,6 +310,7 @@ loadTracker = async function(){
 };
 
 
+
 function renderMonthlyChart(monthlyBankroll, monthLabels){
   const el = document.getElementById("monthlyChart");
   if(!el) return;
@@ -317,17 +318,15 @@ function renderMonthlyChart(monthlyBankroll, monthLabels){
 
   const ctx = el.getContext("2d");
   monthlyChart = new Chart(ctx, {
-    type: "line",
+    type: "bar",
     data: {
       labels: monthLabels,
       datasets: [{
         data: monthlyBankroll,
-        tension: 0.25,
-        fill: true,
-        backgroundColor: "rgba(34,197,94,0.08)",
+        borderRadius: 8,
+        backgroundColor: "rgba(34,197,94,0.75)",
         borderColor: "#22c55e",
-        borderWidth: 2,
-        pointRadius: 0
+        borderWidth: 1
       }]
     },
     options: {
@@ -335,11 +334,14 @@ function renderMonthlyChart(monthlyBankroll, monthLabels){
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { ticks: { callback: (v)=>'£'+v } }
+        y: {
+          ticks: { callback: (v)=>'£'+v }
+        }
       }
     }
   });
 }
+
 
 function renderMarketChart(labels, winPct, totals){
   const el = document.getElementById("marketChart");
@@ -469,17 +471,3 @@ function toggleInsights(){
     arrow.innerText="▼";
   }
 }
-
-
-// Auto-close Insights when switching chart tabs
-document.addEventListener("click", function(e){
-  if(e.target.classList.contains("tab-btn")){
-    const content = document.getElementById("insightsContent");
-    const arrow = document.getElementById("insightsArrow");
-    if(content && !content.classList.contains("insights-collapsed")){
-      content.classList.remove("insights-expanded");
-      content.classList.add("insights-collapsed");
-      arrow.innerText="▼";
-    }
-  }
-});
