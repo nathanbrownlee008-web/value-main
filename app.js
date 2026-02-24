@@ -167,24 +167,42 @@ renderDailyChart(history, dailyLabels);
 const countElem = document.getElementById("betCount");
 if(countElem) countElem.textContent = String(data.length);
 
-// Monthly profit aggregation
+
+// Monthly profit aggregation (FULL YEAR AUTO-FILL)
+const now = new Date();
+const currentYear = now.getFullYear();
+
+// Build full 12 month structure
 const monthMap = {};
+for(let m=0; m<12; m++){
+  const key = currentYear + "-" + String(m+1).padStart(2,"0");
+  monthMap[key] = 0;
+}
+
+// Add profits into correct months
 data.forEach(r=>{
   const d = new Date(r.created_at);
+  if(d.getFullYear() !== currentYear) return;
   const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
+  monthMap[key] += rowProfit(r);
 });
+
 const monthKeys = Object.keys(monthMap).sort();
-let run = 0;
+
+let running = 0;
 const monthLabels = monthKeys.map(k=>{
   const [y,m]=k.split("-");
-  return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+  return new Date(parseInt(y), parseInt(m)-1, 1)
+    .toLocaleDateString('en-GB',{month:'short'});
 });
+
 const monthlyBankroll = monthKeys.map(k=>{
-  run += monthMap[k];
-  return Number((start + run).toFixed(2));
+  running += monthMap[k];
+  return Number((start + running).toFixed(2));
 });
+
 renderMonthlyChart(monthlyBankroll, monthLabels);
+
 
 // Market profit aggregation
 const marketMap = {};
@@ -324,9 +342,12 @@ function renderMonthlyChart(monthlyBankroll, monthLabels){
       datasets: [{
         data: monthlyBankroll,
         borderRadius: 8,
-        backgroundColor: "rgba(34,197,94,0.75)",
+        backgroundColor: "rgba(34,197,94,0.8)",
         borderColor: "#22c55e",
-        borderWidth: 1
+        borderWidth: 1,
+        categoryPercentage: 0.6,
+        barPercentage: 0.5,
+        maxBarThickness: 50
       }]
     },
     options: {
