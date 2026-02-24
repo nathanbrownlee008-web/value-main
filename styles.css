@@ -155,7 +155,7 @@ th{text-align:left}
 
 #chart, #monthlyChart, #marketChart{
   width: 100% !important;
-  height: 240px !important;
+  height: 300px !important;
 }
 
 .bet-count{
@@ -194,53 +194,3 @@ th{text-align:left}
 .insight-label{ opacity:0.75; font-weight: 700; margin-bottom: 6px; }
 .insight-value{ font-size: 20px; font-weight: 900; letter-spacing: 0.2px; }
 .insights-hidden{ display:none; }
-
-
-/* Collapsible Insights */
-.insights-wrapper{margin:20px 0}
-
-.insights-toggle{
-  background:#1e293b;
-  padding:12px;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:600;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  transition:0.2s ease;
-}
-
-.insights-toggle:hover{background:#243044}
-
-#insightsContent{
-  overflow:hidden;
-  transition:max-height 0.35s ease, opacity 0.25s ease;
-}
-
-.insights-collapsed{
-  max-height:0;
-  opacity:0;
-}
-
-.insights-expanded{
-  max-height:600px;
-  opacity:1;
-}
-
-.monthly-breakdown{margin-top:10px}
-.monthly-toggle{
-  background:#1e293b;
-  padding:12px;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:600;
-  display:flex;
-  justify-content:space-between;
-}
-#monthlyWrapper{
-  overflow:hidden;
-  transition:max-height 0.3s ease, opacity 0.3s ease;
-}
-#monthlyWrapper.collapsed{max-height:0;opacity:0}
-#monthlyWrapper.expanded{max-height:2000px;opacity:1}

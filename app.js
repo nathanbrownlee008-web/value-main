@@ -167,29 +167,24 @@ renderDailyChart(history, dailyLabels);
 const countElem = document.getElementById("betCount");
 if(countElem) countElem.textContent = String(data.length);
 
-
-// ===== CLEAN MONTHLY (THIS YEAR ONLY) =====
-const monthly = Array.from({length:12},()=>({ profit:0, stake:0, wins:0, losses:0, bets:0 }));
-
+// Monthly profit aggregation
+const monthMap = {};
 data.forEach(r=>{
   const d = new Date(r.created_at);
-  const month = d.getMonth();
-  const p = rowProfit(r);
-
-  monthly[month].profit += p;
-  monthly[month].stake += r.stake;
-  monthly[month].bets += 1;
-
-  if(r.result==="won") monthly[month].wins += 1;
-  if(r.result==="lost") monthly[month].losses += 1;
+  const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
 });
-
-const monthLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sept","Oct","Nov","Dec"];
-const monthlyProfit = monthly.map(m=>m.profit);
-const monthlyROI = monthly.map(m=>m.stake ? (m.profit/m.stake)*100 : 0);
-
-renderMonthlyChart(monthlyProfit, monthLabels, monthlyROI, monthly);
-
+const monthKeys = Object.keys(monthMap).sort();
+let run = 0;
+const monthLabels = monthKeys.map(k=>{
+  const [y,m]=k.split("-");
+  return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+});
+const monthlyBankroll = monthKeys.map(k=>{
+  run += monthMap[k];
+  return Number((start + run).toFixed(2));
+});
+renderMonthlyChart(monthlyBankroll, monthLabels);
 
 // Market profit aggregation
 const marketMap = {};
@@ -323,17 +318,22 @@ function renderMonthlyChart(profits, labels, roi, monthlyData){
 
   const ctx = el.getContext("2d");
 
+  const maxROI = Math.max(...roi, 5);
+  const minROI = Math.min(...roi, -5);
+  const padding = 5;
+
   monthlyChart = new Chart(ctx,{
     type:"bar",
     data:{
       labels:labels,
       datasets:[{
         data:roi,
-        borderRadius:6,
+        borderRadius:8,
+        barThickness:22,
         backgroundColor:profits.map(v=>{
-          if(v>0) return "rgba(34,197,94,0.85)";
-          if(v<0) return "rgba(239,68,68,0.85)";
-          return "rgba(100,116,139,0.5)";
+          if(v>0) return "rgba(34,197,94,0.9)";
+          if(v<0) return "rgba(239,68,68,0.9)";
+          return "rgba(100,116,139,0.4)";
         })
       }]
     },
@@ -343,8 +343,8 @@ function renderMonthlyChart(profits, labels, roi, monthlyData){
       plugins:{legend:{display:false}},
       scales:{
         y:{
-          min:-100,
-          max:100,
+          min: Math.floor(minROI - padding),
+          max: Math.ceil(maxROI + padding),
           ticks:{callback:(v)=>v+"%"},
           grid:{color:"rgba(255,255,255,0.05)"}
         }
@@ -357,19 +357,22 @@ function renderMonthlyChart(profits, labels, roi, monthlyData){
           const profit = profits[i];
           const percent = roi[i];
 
+          if(percent === 0 && profit === 0) return;
+
           ctx.fillStyle="#fff";
-          ctx.font="bold 12px system-ui";
+          ctx.font="bold 13px system-ui";
           ctx.textAlign="center";
 
-          const yOffset = percent >= 0 ? bar.y-6 : bar.y+14;
-          ctx.fillText("£"+profit.toFixed(0), bar.x, yOffset);
-          ctx.fillText(Math.round(percent)+"%", bar.x, yOffset+14);
+          const yBase = percent >= 0 ? bar.y - 8 : bar.y + 18;
+
+          ctx.fillText("£"+profit.toFixed(0), bar.x, yBase);
+          ctx.font="600 11px system-ui";
+          ctx.fillText("("+Math.round(percent)+"%)", bar.x, yBase+14);
         });
       }
     }]
   });
 
-  // Build Breakdown Table
   const table = document.getElementById("monthlyTable");
   if(!table) return;
 
@@ -388,6 +391,8 @@ function renderMonthlyChart(profits, labels, roi, monthlyData){
   html += "</table>";
   table.innerHTML = html;
 }
+
+
 function renderMarketChart(labels, winPct, totals){
   const el = document.getElementById("marketChart");
   if(!el) return;
@@ -499,34 +504,4 @@ function rowProfit(row){
   if(row.result === "won") return row.stake * (row.odds - 1);
   if(row.result === "lost") return -row.stake;
   return 0;
-}
-
-
-function toggleInsights(){
-  const content = document.getElementById("insightsContent");
-  const arrow = document.getElementById("insightsArrow");
-
-  if(content.classList.contains("insights-collapsed")){
-    content.classList.remove("insights-collapsed");
-    content.classList.add("insights-expanded");
-    arrow.innerText="▲";
-  }else{
-    content.classList.remove("insights-expanded");
-    content.classList.add("insights-collapsed");
-    arrow.innerText="▼";
-  }
-}
-
-function toggleMonthly(){
-  const wrapper=document.getElementById("monthlyWrapper");
-  const arrow=document.getElementById("monthlyArrow");
-  if(wrapper.classList.contains("collapsed")){
-    wrapper.classList.remove("collapsed");
-    wrapper.classList.add("expanded");
-    arrow.innerText="▲";
-  }else{
-    wrapper.classList.remove("expanded");
-    wrapper.classList.add("collapsed");
-    arrow.innerText="▼";
-  }
 }

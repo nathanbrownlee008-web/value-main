@@ -40,15 +40,7 @@
 </div>
 
 
-
-<div class="insights-wrapper">
-  <div class="insights-toggle" onclick="toggleInsights()">
-    📊 Insights
-    <span id="insightsArrow">▼</span>
-  </div>
-  <div id="insightsContent" class="insights-collapsed">
-    <div class="insights" id="insightsBlock">
-
+<div class="insights" id="insightsBlock">
   <div class="insights-header">
     <h3 class="insights-title">Insights</h3>
     <select id="insightSelect" class="insights-select" aria-label="Select insight">
@@ -73,7 +65,12 @@
   </div>
 </div>
 
-
+<div class="mini-value" id="bestMarket">—</div>
+  </div>
+  <div class="mini-card">
+    <div class="mini-label">Worst Market</div>
+    <div class="mini-value" id="worstMarket">—</div>
+  </div>
   <div class="mini-card">
     <div class="mini-label">Best Month</div>
     <div class="mini-value" id="bestMonth">—</div>
@@ -81,9 +78,6 @@
   <div class="mini-card">
     <div class="mini-label">Worst Month</div>
     <div class="mini-value" id="worstMonth">—</div>
-  </div>
-
-    </div>
   </div>
 </div>
 
@@ -99,16 +93,6 @@
   </div>
   <div class="chart-pane" id="pane-monthly">
     <canvas id="monthlyChart"></canvas>
-<div class="monthly-breakdown">
-  <div class="monthly-toggle" onclick="toggleMonthly()">
-    📊 Monthly Breakdown (12)
-    <span id="monthlyArrow">▼</span>
-  </div>
-  <div id="monthlyWrapper" class="collapsed">
-    <div id="monthlyTable"></div>
-  </div>
-</div>
-
   </div>
   <div class="chart-pane" id="pane-market">
     <canvas id="marketChart"></canvas>
