@@ -167,18 +167,15 @@ renderDailyChart(history, dailyLabels);
 const countElem = document.getElementById("betCount");
 if(countElem) countElem.textContent = String(data.length);
 
-
-// ===== TRUE Monthly Profit + ROI =====
+// ===== TRUE Monthly Profit + ROI (Not Cumulative) =====
 const monthData = {};
 data.forEach(r=>{
   const d = new Date(r.created_at);
-  const month = d.getMonth();
   const year = d.getFullYear();
+  const month = d.getMonth();
   const key = year + "-" + month;
 
-  if(!monthData[key]){
-    monthData[key] = { profit:0, stake:0 };
-  }
+  if(!monthData[key]) monthData[key] = {profit:0, stake:0};
 
   const p = rowProfit(r);
   monthData[key].profit += p;
@@ -187,13 +184,14 @@ data.forEach(r=>{
 
 const now = new Date();
 const currentYear = now.getFullYear();
+
 const monthLabels = [];
 const monthlyProfit = [];
 const monthlyROI = [];
 
-for(let m=0; m<12; m++){
+for(let m=0;m<12;m++){
   const key = currentYear + "-" + m;
-  const label = new Date(currentYear, m, 1)
+  const label = new Date(currentYear,m,1)
     .toLocaleDateString('en-GB',{month:'short'});
   monthLabels.push(label);
 
@@ -202,14 +200,13 @@ for(let m=0; m<12; m++){
     const stake = monthData[key].stake;
     monthlyProfit.push(profit);
     monthlyROI.push(stake ? (profit/stake)*100 : 0);
-  } else {
+  }else{
     monthlyProfit.push(0);
     monthlyROI.push(0);
   }
 }
 
 renderMonthlyChart(monthlyProfit, monthLabels, monthlyROI);
-
 
 // Market profit aggregation
 const marketMap = {};
@@ -335,7 +332,6 @@ loadTracker = async function(){
 };
 
 
-
 function renderMonthlyChart(profits, labels, roi){
   const el = document.getElementById("monthlyChart");
   if(!el) return;
@@ -346,13 +342,13 @@ function renderMonthlyChart(profits, labels, roi){
   monthlyChart = new Chart(ctx,{
     type:"bar",
     data:{
-      labels,
+      labels:labels,
       datasets:[{
         data:profits,
         borderRadius:6,
         backgroundColor:profits.map(v=>{
-          if(v > 0) return "rgba(34,197,94,0.85)";
-          if(v < 0) return "rgba(239,68,68,0.85)";
+          if(v>0) return "rgba(34,197,94,0.85)";
+          if(v<0) return "rgba(239,68,68,0.85)";
           return "rgba(100,116,139,0.6)";
         })
       }]
@@ -361,26 +357,17 @@ function renderMonthlyChart(profits, labels, roi){
       responsive:true,
       maintainAspectRatio:false,
       plugins:{
-        legend:{display:false},
-        tooltip:{
-          callbacks:{
-            label:(ctx)=>{
-              const i = ctx.dataIndex;
-              return "£"+profits[i].toFixed(2)
-                     + " | ROI: " + roi[i].toFixed(1)+"%";
-            }
-          }
-        }
+        legend:{display:false}
       },
       scales:{
         y:{
           beginAtZero:true,
-          ticks:{ callback:(v)=>"£"+v }
+          ticks:{callback:(v)=>"£"+v}
         }
       }
     },
     plugins:[{
-      id:"labels",
+      id:"monthlyLabels",
       afterDatasetsDraw(chart){
         const {ctx} = chart;
         chart.getDatasetMeta(0).data.forEach((bar,i)=>{
@@ -388,23 +375,20 @@ function renderMonthlyChart(profits, labels, roi){
           const x = bar.x;
           const y = bar.y;
 
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "12px Arial";
-          ctx.textAlign = "center";
+          ctx.fillStyle="#ffffff";
+          ctx.font="12px system-ui";
+          ctx.textAlign="center";
 
-          ctx.fillText("£"+value.toFixed(0), x, value >= 0 ? y-6 : y+16);
-          ctx.fillText(roi[i].toFixed(0)+"%", x, value >= 0 ? y+14 : y-6);
+          // £ above/below
+          ctx.fillText("£"+value.toFixed(0), x, value>=0? y-6 : y+16);
+
+          // ROI inside
+          ctx.fillText(Math.round(roi[i])+"%", x, value>=0? y+14 : y-6);
         });
       }
     }]
   });
-}
-      }
-    }
-  });
-}
-
-function renderMarketChart(labels, winPct, totals){
+}function renderMarketChart(labels, winPct, totals){
   const el = document.getElementById("marketChart");
   if(!el) return;
   if(marketChart) marketChart.destroy();
@@ -532,3 +516,17 @@ function toggleInsights(){
     arrow.innerText="▼";
   }
 }
+
+
+// Auto-close Insights when switching chart tabs
+document.addEventListener("click", function(e){
+  if(e.target.classList.contains("tab-btn")){
+    const content = document.getElementById("insightsContent");
+    const arrow = document.getElementById("insightsArrow");
+    if(content && !content.classList.contains("insights-collapsed")){
+      content.classList.remove("insights-expanded");
+      content.classList.add("insights-collapsed");
+      arrow.innerText="▼";
+    }
+  }
+});
