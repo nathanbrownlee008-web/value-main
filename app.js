@@ -12,57 +12,6 @@ const lossesElem=document.getElementById("losses");
 const avgOddsElem=document.getElementById("avgOdds");
 const profitCard=document.getElementById("profitCard");
 
-const savedBankroll=localStorage.getItem("starting_bankroll");
-if(savedBankroll){startingBankroll.value=savedBankroll;}
-
-startingBankroll.addEventListener("input",function(){
-localStorage.setItem("starting_bankroll",this.value);
-loadTracker();
-});
-
-tabBets.onclick=()=>switchTab(true);
-tabTracker.onclick=()=>switchTab(false);
-
-function switchTab(show){
-betsSection.style.display=show?"block":"none";
-trackerSection.style.display=show?"none":"block";
-tabBets.classList.toggle("active",show);
-tabTracker.classList.toggle("active",!show);
-}
-
-async function loadBets(){
-const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
-betsGrid.innerHTML="";
-data.forEach(row=>{
-let estProb=0.6;
-let fairOdds=(1/estProb);
-let value=((row.odds-fairOdds)/fairOdds*100).toFixed(1);
-const card=document.createElement("div");
-card.className="card";
-card.innerHTML=`
-${value>3?'<div class="value-badge">+'+value+'%</div>':''}
-<h3>${row.match}</h3>
-<p>${row.market} • ${row.bet_date}</p>
-<p>Odds: ${row.odds}</p>
-<button onclick='addToTracker(${JSON.stringify(row)})'>Add to Tracker</button>
-`;
-betsGrid.appendChild(card);
-});
-}
-
-async function addToTracker(row){
-let stake=prompt("Enter stake amount:",10);
-if(!stake) return;
-await client.from("bet_tracker").insert({
-match:row.match,
-market:row.market,
-odds:row.odds,
-stake:parseFloat(stake),
-result:"pending"
-});
-loadTracker();
-}
-
 let chart;
 
 function renderChart(history){
@@ -74,11 +23,13 @@ data:{
 labels:history.map((_,i)=>i+1),
 datasets:[{
 data:history,
-tension:0.4,
+tension:0.25,
 fill:true,
-backgroundColor:"rgba(34,197,94,0.12)",
+backgroundColor:"rgba(34,197,94,0.08)",
 borderColor:"#22c55e",
-borderWidth:2
+borderWidth:2,
+pointRadius:0,
+pointHoverRadius:4
 }]
 },
 options:{responsive:true,plugins:{legend:{display:false}}}
@@ -87,10 +38,8 @@ options:{responsive:true,plugins:{legend:{display:false}}}
 
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
-
-let start=parseFloat(startingBankroll.value);
-let bankroll=start;
-let profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
+let start=parseFloat(document.getElementById("startingBankroll").value);
+let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
 
 let html="<table><tr><th>Match</th><th>Stake</th><th>Result</th><th>Profit</th></tr>";
 
@@ -98,20 +47,13 @@ data.forEach(row=>{
 let p=0;
 if(row.result==="won"){p=row.stake*(row.odds-1);wins++;}
 if(row.result==="lost"){p=-row.stake;losses++;}
-profit+=p; totalStake+=row.stake; totalOdds+=row.odds;
-bankroll=start+profit;
-history.push(bankroll);
+profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
+bankroll=start+profit;history.push(bankroll);
 
 html+=`<tr>
 <td>${row.match}</td>
-<td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"/></td>
-<td>
-<select class="result-select ${row.result}" onchange="updateResult('${row.id}',this.value)">
-<option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
-<option value="won" ${row.result==="won"?"selected":""}>won</option>
-<option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
-</select>
-</td>
+<td>${row.stake}</td>
+<td>${row.result}</td>
 <td class="profit-cell">
 <span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
 <button class="delete-btn" onclick="deleteBet('${row.id}')">✕</button>
@@ -120,7 +62,7 @@ html+=`<tr>
 });
 
 html+="</table>";
-trackerTable.innerHTML=html;
+document.getElementById("trackerTable").innerHTML=html;
 
 bankrollElem.innerText=bankroll.toFixed(2);
 profitElem.innerText=profit.toFixed(2);
@@ -135,16 +77,6 @@ if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
 renderChart(history);
-}
-
-async function updateResult(id,val){
-await client.from("bet_tracker").update({result:val}).eq("id",id);
-loadTracker();
-}
-
-async function updateStake(id,val){
-await client.from("bet_tracker").update({stake:parseFloat(val)}).eq("id",id);
-loadTracker();
 }
 
 async function deleteBet(id){
@@ -168,5 +100,4 @@ a.click();
 });
 }
 
-loadBets();
 loadTracker();
