@@ -40,22 +40,31 @@
 </div>
 
 
-
-<div class="insights">
-  <div class="insights-head">
-    <div class="insights-title">Insights</div>
-    <select id="insightSelect" class="insight-select" aria-label="Select insight">
+<div class="insights" id="insightsBlock">
+  <div class="insights-header">
+    <h3 class="insights-title">Insights</h3>
+    <select id="insightSelect" class="insights-select" aria-label="Select insight">
       <option value="bestMarket">Best Market</option>
       <option value="worstMarket">Worst Market</option>
       <option value="bestMonth">Best Month</option>
       <option value="worstMonth">Worst Month</option>
     </select>
   </div>
-  <div class="insight-card">
+
+  <div class="insights-card" id="insightCard">
     <div class="insight-label" id="insightLabel">Best Market</div>
     <div class="insight-value" id="insightValue">—</div>
   </div>
+
+  <!-- hidden values populated by JS -->
+  <div class="insights-hidden" aria-hidden="true">
+    <span id="bestMarket" style="display:none;">—</span>
+    <span id="worstMarket" style="display:none;">—</span>
+    <span id="bestMonth" style="display:none;">—</span>
+    <span id="worstMonth" style="display:none;">—</span>
+  </div>
 </div>
+
 <div class="mini-value" id="bestMarket">—</div>
   </div>
   <div class="mini-card">

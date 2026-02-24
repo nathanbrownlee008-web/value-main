@@ -17,7 +17,6 @@ tabTracker.onclick=()=>switchTab(false);
 
 function switchTab(show){
   initChartTabs();
-  initInsightDropdown();
 betsSection.style.display=show?"block":"none";
 trackerSection.style.display=show?"none":"block";
 tabBets.classList.toggle("active",show);
@@ -49,6 +48,37 @@ result:"pending"
 });
 loadTracker();
 }
+
+// ===== Insights (dropdown) =====
+const insightStore = {
+  bestMarket: { label: "Best Market", value: "—" },
+  worstMarket: { label: "Worst Market", value: "—" },
+  bestMonth:  { label: "Best Month",  value: "—" },
+  worstMonth: { label: "Worst Month", value: "—" },
+};
+
+function setInsight(key, value){
+  if(!insightStore[key]) return;
+  insightStore[key].value = value;
+  const hidden = document.getElementById(key);
+  if(hidden) hidden.textContent = value;
+}
+
+function updateInsightUI(){
+  const sel = document.getElementById("insightSelect");
+  const labelEl = document.getElementById("insightLabel");
+  const valueEl = document.getElementById("insightValue");
+  if(!sel || !labelEl || !valueEl) return;
+  const key = sel.value || "bestMarket";
+  labelEl.textContent = insightStore[key]?.label || "Insights";
+  valueEl.textContent = insightStore[key]?.value || "—";
+}
+
+document.addEventListener("change", (e)=>{
+  if(e.target && e.target.id === "insightSelect"){
+    updateInsightUI();
+  }
+});
 
 let dailyChart;
 let monthlyChart;
@@ -158,14 +188,31 @@ renderMonthlyChart(monthlyBankroll, monthLabels);
 
 // Market profit aggregation
 const marketMap = {};
+const marketWL = {}; // {market:{wins,losses,pending,bets}}
 data.forEach(r=>{
   const mk = (r.market && String(r.market).trim()) ? String(r.market).trim() : "Unknown";
   marketMap[mk] = (marketMap[mk]||0) + rowProfit(r);
+
+  if(!marketWL[mk]) marketWL[mk] = {wins:0,losses:0,pending:0,bets:0};
+  marketWL[mk].bets += 1;
+  const res = (r.result || "pending").toLowerCase();
+  if(res === "won") marketWL[mk].wins += 1;
+  else if(res === "lost") marketWL[mk].losses += 1;
+  else marketWL[mk].pending += 1;
 });
-let entries = Object.entries(marketMap);
-entries.sort((a,b)=>Math.abs(b[1]) - Math.abs(a[1]));
+
+// Build win% series (resolved only); show top 8 by bet count
+let entries = Object.entries(marketWL);
+entries.sort((a,b)=>(b[1].bets)-(a[1].bets));
 entries = entries.slice(0,8);
-renderMarketChart(entries.map(e=>e[0]), entries.map(e=>Number(e[1].toFixed(2))));
+
+const labels = entries.map(e=>e[0]);
+const totals = entries.map(e=>({ bets:e[1].bets, wins:e[1].wins, losses:e[1].losses }));
+const winPct = entries.map(e=>{
+  const resolved = e[1].wins + e[1].losses;
+  return resolved ? (e[1].wins / resolved) * 100 : 0;
+});
+renderMarketChart(labels, winPct, totals);
 
 // Mini summary
 if(entries.length){
@@ -239,8 +286,6 @@ function toggleTracker(){
     arrow.innerText="▼";
     localStorage.setItem("tracker_open","false");
   }
-
-  updateInsightUI();
 }
 
 // Restore state on load
@@ -296,7 +341,7 @@ function renderMonthlyChart(monthlyBankroll, monthLabels){
   });
 }
 
-function renderMarketChart(labels, winPct){
+function renderMarketChart(labels, winPct, totals){
   const el = document.getElementById("marketChart");
   if(!el) return;
   if(marketChart) marketChart.destroy();
@@ -308,23 +353,27 @@ function renderMarketChart(labels, winPct){
       labels,
       datasets: [{
         data: winPct,
-        backgroundColor: "rgba(34,197,94,0.16)",
-        borderColor: "#22c55e",
-        borderWidth: 2,
+        borderWidth: 0,
         borderRadius: 10,
         barThickness: 18,
-        maxBarThickness: 18
+        backgroundColor: "rgba(34,197,94,0.20)",
+        borderColor: "#22c55e"
       }]
     },
     options: {
+      indexAxis: "y",
       responsive: true,
       maintainAspectRatio: false,
-      indexAxis: "y",
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx)=> `${ctx.parsed.x.toFixed(0)}% win rate`
+            label: (ctx)=>{
+              const i = ctx.dataIndex;
+              const pct = Number(ctx.raw || 0).toFixed(0) + "%";
+              const t = (totals && totals[i]) ? totals[i] : { bets: 0, wins: 0, losses: 0 };
+              return `Win rate: ${pct} • Bets: ${t.bets} (W:${t.wins} L:${t.losses})`;
+            }
           }
         }
       },
@@ -333,28 +382,45 @@ function renderMarketChart(labels, winPct){
           min: 0,
           max: 100,
           ticks: { display: false },
-          grid: { display: false, drawBorder: false },
-          border: { display: false }
+          grid: { display: false, drawBorder: false }
         },
         y: {
-          ticks: { color: "rgba(226,232,240,0.9)", font: { weight: "800" } },
-          grid: { display: false },
-          border: { display: false }
+          ticks: { color: "rgba(229,231,235,0.85)", font: { weight: 800 } },
+          grid: { display: false, drawBorder: false }
         }
-      }
+      },
+      animation: { duration: 250 }
     },
-    plugins: [insideLabelPlugin]
+    plugins: [{
+      id: "pctLabels",
+      afterDatasetsDraw(chart){
+        const {ctx} = chart;
+        const meta = chart.getDatasetMeta(0);
+        ctx.save();
+        ctx.font = "800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        ctx.fillStyle = "rgba(229,231,235,0.95)";
+        meta.data.forEach((bar, i)=>{
+          const val = winPct[i] ?? 0;
+          const text = Math.round(val) + "%";
+          const x = bar.x - 10; // inside bar near end
+          const y = bar.y + 4;
+          ctx.textAlign = "right";
+          ctx.fillText(text, x, y);
+        });
+        ctx.restore();
+      }
+    }]
   });
 }
 
-function setMiniValue(id, label, value){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.textContent = label + " " + value;
-  el.classList.remove("positive","negative");
-  if(value.startsWith("+£")) el.classList.add("positive");
-  if(value.startsWith("-£")) el.classList.add("negative");
+function setMiniValue(id, prefix, value){
+  // legacy helper kept, now feeds Insights dropdown
+  const txt = (prefix ? (prefix + " ") : "") + (value || "—");
+  setInsight(id, txt);
+  updateInsightUI();
 }
+
+
 
 
 function initChartTabs(){
@@ -378,59 +444,4 @@ function rowProfit(row){
   if(row.result === "won") return row.stake * (row.odds - 1);
   if(row.result === "lost") return -row.stake;
   return 0;
-}
-
-
-const insideLabelPlugin = {
-  id: "insideLabelPlugin",
-  afterDatasetsDraw(chart, args, pluginOptions) {
-    const { ctx } = chart;
-    ctx.save();
-    const dataset = chart.data.datasets[0];
-    const meta = chart.getDatasetMeta(0);
-    meta.data.forEach((bar, i) => {
-      const val = dataset.data[i];
-      const label = (typeof val === "number") ? (val.toFixed(0) + "%") : String(val);
-      const pos = bar.tooltipPosition();
-      ctx.font = "800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-      ctx.fillStyle = "rgba(226,232,240,0.95)";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      // place inside bar near the end
-      ctx.fillText(label, pos.x - 18, pos.y);
-    });
-    ctx.restore();
-  }
-};
-
-
-function updateInsightUI(){
-  const sel = document.getElementById("insightSelect");
-  const labelEl = document.getElementById("insightLabel");
-  const valEl = document.getElementById("insightValue");
-  if(!sel || !labelEl || !valEl) return;
-
-  const map = {
-    bestMarket: { label: "Best Market", source: document.getElementById("bestMarket") },
-    worstMarket: { label: "Worst Market", source: document.getElementById("worstMarket") },
-    bestMonth: { label: "Best Month", source: document.getElementById("bestMonth") },
-    worstMonth: { label: "Worst Month", source: document.getElementById("worstMonth") }
-  };
-
-  const chosen = map[sel.value] || map.bestMarket;
-  labelEl.textContent = chosen.label;
-  const txt = chosen.source ? chosen.source.textContent : "—";
-  valEl.textContent = txt;
-
-  valEl.classList.remove("positive","negative");
-  if(txt.includes("+£")) valEl.classList.add("positive");
-  if(txt.includes("-£")) valEl.classList.add("negative");
-}
-
-
-function initInsightDropdown(){
-  const sel = document.getElementById("insightSelect");
-  if(!sel) return;
-  sel.addEventListener("change", updateInsightUI);
-  updateInsightUI();
 }
