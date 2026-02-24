@@ -25,97 +25,25 @@
 <section id="trackerSection" style="display:none;">
 <div class="tracker-controls">
 <label>Starting Bankroll</label>
-<input type="number" id="startingBankroll" value="250"/>
+<input type="number" id="startingBankroll" value="1000"/>
 <button onclick="exportCSV()">Export CSV</button>
 </div>
 
 <div class="stats-grid">
-<div class="stat-card">Bankroll<br><strong>£<span id="bankroll">0</span></strong></div>
-<div class="stat-card" id="profitCard">Profit<br><strong>£<span id="profit">0</span></strong></div>
-<div class="stat-card">ROI<br><strong><span id="roi">0</span>%</strong></div>
-<div class="stat-card">Win Rate<br><strong><span id="winrate">0</span>%</strong></div>
-<div class="stat-card">Won<br><strong><span id="wins">0</span></strong></div>
-<div class="stat-card">Lost<br><strong><span id="losses">0</span></strong></div>
-<div class="stat-card">Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
+<div>Bankroll<br><strong>£<span id="bankroll">0</span></strong></div>
+<div>Profit<br><strong>£<span id="profit">0</span></strong></div>
+<div>ROI<br><strong><span id="roi">0</span>%</strong></div>
+<div>Win Rate<br><strong><span id="winrate">0</span>%</strong></div>
+<div>Won<br><strong><span id="wins">0</span></strong></div>
+<div>Lost<br><strong><span id="losses">0</span></strong></div>
+<div>Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
 </div>
 
+<canvas id="chart"></canvas>
 
-
-<div class="insights-wrapper">
-  <div class="insights-toggle" onclick="toggleInsights()">
-    📊 Insights
-    <span id="insightsArrow">▼</span>
-  </div>
-  <div id="insightsContent" class="insights-collapsed">
-    <div class="insights" id="insightsBlock">
-
-  <div class="insights-header">
-    <h3 class="insights-title">Insights</h3>
-    <select id="insightSelect" class="insights-select" aria-label="Select insight">
-      <option value="bestMarket">Best Market</option>
-      <option value="worstMarket">Worst Market</option>
-      <option value="bestMonth">Best Month</option>
-      <option value="worstMonth">Worst Month</option>
-    </select>
-  </div>
-
-  <div class="insights-card" id="insightCard">
-    <div class="insight-label" id="insightLabel">Best Market</div>
-    <div class="insight-value" id="insightValue">—</div>
-  </div>
-
-  <!-- hidden values populated by JS -->
-  <div class="insights-hidden" aria-hidden="true">
-    <span id="bestMarket" style="display:none;">—</span>
-    <span id="worstMarket" style="display:none;">—</span>
-    <span id="bestMonth" style="display:none;">—</span>
-    <span id="worstMonth" style="display:none;">—</span>
-  </div>
+<div class="tracker-table-wrapper">
+<div id="trackerTable"></div>
 </div>
-
-
-  <div class="mini-card">
-    <div class="mini-label">Best Month</div>
-    <div class="mini-value" id="bestMonth">—</div>
-  </div>
-  <div class="mini-card">
-    <div class="mini-label">Worst Month</div>
-    <div class="mini-value" id="worstMonth">—</div>
-  </div>
-
-    </div>
-  </div>
-</div>
-
-<div class="chart-tabs" role="tablist" aria-label="Tracker charts">
-  <button class="tab-btn active" data-tab="daily">Daily</button>
-  <button class="tab-btn" data-tab="monthly">Monthly</button>
-  <button class="tab-btn" data-tab="market">Markets</button>
-</div>
-
-<div class="chart-wrap">
-  <div class="chart-pane active" id="pane-daily">
-    <canvas id="chart"></canvas>
-  </div>
-  <div class="chart-pane" id="pane-monthly">
-    <canvas id="monthlyChart"></canvas>
-  </div>
-  <div class="chart-pane" id="pane-market">
-    <canvas id="marketChart"></canvas>
-  </div>
-</div>
-
-
-<div class="tracker-history">
-  <div class="tracker-toggle" onclick="toggleTracker()">
-    📊 Tracker History (<span id="betCount">0</span>)
-    <span id="trackerArrow">▼</span>
-  </div>
-  <div id="trackerWrapper" class="collapsed">
-    <div id="trackerTable"></div>
-  </div>
-</div>
-
 
 </section>
 
