@@ -13,11 +13,16 @@
 <header class="main-header">
 <h1 class="logo-3d">Top Daily Tips</h1>
 <div class="tabs">
-<button id="tabTracker" class="active">Tracker</button>
+<button id="tabBets" class="active">Value Bets</button>
+<button id="tabTracker">Tracker</button>
 </div>
 </header>
 
-<section id="trackerSection">
+<section id="betsSection">
+<div id="betsGrid" class="bets-grid"></div>
+</section>
+
+<section id="trackerSection" style="display:none;">
 
 <div class="tracker-controls">
 <label>Starting Bankroll</label>
@@ -37,9 +42,7 @@
 
 <canvas id="chart"></canvas>
 
-<div class="tracker-table-wrapper">
 <div id="trackerTable"></div>
-</div>
 
 </section>
 

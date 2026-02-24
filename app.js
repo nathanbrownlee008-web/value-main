@@ -12,6 +12,42 @@ const lossesElem=document.getElementById("losses");
 const avgOddsElem=document.getElementById("avgOdds");
 const profitCard=document.getElementById("profitCard");
 
+tabBets.onclick=()=>switchTab(true);
+tabTracker.onclick=()=>switchTab(false);
+
+function switchTab(show){
+betsSection.style.display=show?"block":"none";
+trackerSection.style.display=show?"none":"block";
+tabBets.classList.toggle("active",show);
+tabTracker.classList.toggle("active",!show);
+}
+
+async function loadBets(){
+const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
+betsGrid.innerHTML="";
+if(!data) return;
+data.forEach(row=>{
+betsGrid.innerHTML+=`
+<div class="card">
+<h3>${row.match}</h3>
+<p>${row.market} • ${row.bet_date}</p>
+<p>Odds: ${row.odds}</p>
+<button onclick='addToTracker(${JSON.stringify(row)})'>Add to Tracker</button>
+</div>`;
+});
+}
+
+async function addToTracker(row){
+await client.from("bet_tracker").insert({
+match:row.match,
+market:row.market,
+odds:row.odds,
+stake:10,
+result:"pending"
+});
+loadTracker();
+}
+
 let chart;
 
 function renderChart(history){
@@ -41,7 +77,7 @@ const {data}=await client.from("bet_tracker").select("*").order("created_at",{as
 let start=parseFloat(document.getElementById("startingBankroll").value);
 let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
 
-let html="<table><tr><th>Match</th><th>Stake</th><th>Result</th><th>Profit</th></tr>";
+let html="<table><tr><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
 
 data.forEach(row=>{
 let p=0;
@@ -60,7 +96,7 @@ html+=`<tr>
 <option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
 </select>
 </td>
-<td class="profit-cell">
+<td class="profit-cell profit-col">
 <span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
 <button class="delete-btn" onclick="deleteBet('${row.id}')">✕</button>
 </td>
@@ -68,7 +104,7 @@ html+=`<tr>
 });
 
 html+="</table>";
-document.getElementById("trackerTable").innerHTML=html;
+trackerTable.innerHTML=html;
 
 bankrollElem.innerText=bankroll.toFixed(2);
 profitElem.innerText=profit.toFixed(2);
@@ -116,4 +152,5 @@ a.click();
 });
 }
 
+loadBets();
 loadTracker();
