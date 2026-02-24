@@ -96,9 +96,11 @@ html+=`<tr>
 <option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
 </select>
 </td>
-<td class="profit-cell profit-col">
+<td class="profit-col">
+<div class="profit-content">
 <span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
 <button class="delete-btn" onclick="deleteBet('${row.id}')">✕</button>
+</div>
 </td>
 </tr>`;
 });
