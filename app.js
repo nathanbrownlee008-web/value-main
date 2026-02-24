@@ -167,42 +167,24 @@ renderDailyChart(history, dailyLabels);
 const countElem = document.getElementById("betCount");
 if(countElem) countElem.textContent = String(data.length);
 
-
-// Monthly profit aggregation (FULL YEAR AUTO-FILL)
-const now = new Date();
-const currentYear = now.getFullYear();
-
-// Build full 12 month structure
+// Monthly profit aggregation
 const monthMap = {};
-for(let m=0; m<12; m++){
-  const key = currentYear + "-" + String(m+1).padStart(2,"0");
-  monthMap[key] = 0;
-}
-
-// Add profits into correct months
 data.forEach(r=>{
   const d = new Date(r.created_at);
-  if(d.getFullYear() !== currentYear) return;
   const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-  monthMap[key] += rowProfit(r);
+  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
 });
-
 const monthKeys = Object.keys(monthMap).sort();
-
-let running = 0;
+let run = 0;
 const monthLabels = monthKeys.map(k=>{
   const [y,m]=k.split("-");
-  return new Date(parseInt(y), parseInt(m)-1, 1)
-    .toLocaleDateString('en-GB',{month:'short'});
+  return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
 });
-
 const monthlyBankroll = monthKeys.map(k=>{
-  running += monthMap[k];
-  return Number((start + running).toFixed(2));
+  run += monthMap[k];
+  return Number((start + run).toFixed(2));
 });
-
 renderMonthlyChart(monthlyBankroll, monthLabels);
-
 
 // Market profit aggregation
 const marketMap = {};
@@ -328,7 +310,6 @@ loadTracker = async function(){
 };
 
 
-
 function renderMonthlyChart(monthlyBankroll, monthLabels){
   const el = document.getElementById("monthlyChart");
   if(!el) return;
@@ -336,18 +317,17 @@ function renderMonthlyChart(monthlyBankroll, monthLabels){
 
   const ctx = el.getContext("2d");
   monthlyChart = new Chart(ctx, {
-    type: "bar",
+    type: "line",
     data: {
       labels: monthLabels,
       datasets: [{
         data: monthlyBankroll,
-        borderRadius: 8,
-        backgroundColor: "rgba(34,197,94,0.8)",
+        tension: 0.25,
+        fill: true,
+        backgroundColor: "rgba(34,197,94,0.08)",
         borderColor: "#22c55e",
-        borderWidth: 1,
-        categoryPercentage: 0.6,
-        barPercentage: 0.5,
-        maxBarThickness: 50
+        borderWidth: 2,
+        pointRadius: 0
       }]
     },
     options: {
@@ -355,14 +335,11 @@ function renderMonthlyChart(monthlyBankroll, monthLabels){
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: {
-          ticks: { callback: (v)=>'£'+v }
-        }
+        y: { ticks: { callback: (v)=>'£'+v } }
       }
     }
   });
 }
-
 
 function renderMarketChart(labels, winPct, totals){
   const el = document.getElementById("marketChart");
