@@ -167,24 +167,29 @@ renderDailyChart(history, dailyLabels);
 const countElem = document.getElementById("betCount");
 if(countElem) countElem.textContent = String(data.length);
 
-// Monthly profit aggregation
-const monthMap = {};
+
+// ===== CLEAN MONTHLY (THIS YEAR ONLY) =====
+const monthly = Array.from({length:12},()=>({ profit:0, stake:0, wins:0, losses:0, bets:0 }));
+
 data.forEach(r=>{
   const d = new Date(r.created_at);
-  const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
+  const month = d.getMonth();
+  const p = rowProfit(r);
+
+  monthly[month].profit += p;
+  monthly[month].stake += r.stake;
+  monthly[month].bets += 1;
+
+  if(r.result==="won") monthly[month].wins += 1;
+  if(r.result==="lost") monthly[month].losses += 1;
 });
-const monthKeys = Object.keys(monthMap).sort();
-let run = 0;
-const monthLabels = monthKeys.map(k=>{
-  const [y,m]=k.split("-");
-  return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
-});
-const monthlyBankroll = monthKeys.map(k=>{
-  run += monthMap[k];
-  return Number((start + run).toFixed(2));
-});
-renderMonthlyChart(monthlyBankroll, monthLabels);
+
+const monthLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sept","Oct","Nov","Dec"];
+const monthlyProfit = monthly.map(m=>m.profit);
+const monthlyROI = monthly.map(m=>m.stake ? (m.profit/m.stake)*100 : 0);
+
+renderMonthlyChart(monthlyProfit, monthLabels, monthlyROI, monthly);
+
 
 // Market profit aggregation
 const marketMap = {};
