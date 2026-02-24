@@ -50,13 +50,13 @@ loadTracker();
 
 let chart;
 
-function renderChart(history){
+function renderChart(history, labels){
 if(chart) chart.destroy();
 const ctx=document.getElementById("chart").getContext("2d");
 chart=new Chart(ctx,{
 type:"line",
 data:{
-labels:data.map(r=> new Date(r.created_at).toLocaleDateString()),
+labels: labels,
 datasets:[{
 data:history,
 tension:0.25,
@@ -67,17 +67,14 @@ borderWidth:2,
 pointRadius:0
 }]
 },
-options:{
-        responsive:true,
-        plugins:{legend:{display:false}},
+options:{responsive:true,plugins:{legend:{display:false}},
         scales:{
             y:{
                 ticks:{
                     callback:function(value){return '£'+value;}
                 }
             }
-        }
-    }
+        }}
 });
 }
 
@@ -130,7 +127,17 @@ profitCard.classList.remove("glow-green","glow-red");
 if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
-renderChart(history);
+
+const labels = data.map(r => {
+  const d = new Date(r.created_at);
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+});
+
+renderChart(history, labels);
+
+const countElem = document.getElementById("betCount");
+if(countElem){ countElem.innerText = data.length; }
+
 }
 
 async function updateStake(id,val){
@@ -207,7 +214,6 @@ loadTracker = async function(){
 };
 
 
-// Force tracker open by default (still collapsible manually)
 document.addEventListener("DOMContentLoaded", function(){
   const wrapper=document.getElementById("trackerWrapper");
   const arrow=document.getElementById("trackerArrow");
