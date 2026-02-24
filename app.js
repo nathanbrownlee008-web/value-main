@@ -90,7 +90,9 @@ html+=`<tr>
 <td>${row.match}</td>
 <td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
 <td>
-<select class="result-select" onchange="updateResult('${row.id}',this.value)">
+<select 
+class="result-select result-${row.result}" 
+onchange="updateResult('${row.id}',this.value)">
 <option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
 <option value="won" ${row.result==="won"?"selected":""}>won</option>
 <option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
