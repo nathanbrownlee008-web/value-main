@@ -305,17 +305,29 @@ loadTracker();
 
 function exportCSV(){
 client.from("bet_tracker").select("*").then(({data})=>{
-let csv="match,market,odds,stake,result\n";
+
+let csv="match,market,odds,stake,result,profit\n";
+
 data.forEach(r=>{
-csv+=`${r.match},${r.market},${r.odds},${r.stake},${r.result}\n`;
+
+let profit = 0;
+
+if(r.result === "won"){
+  profit = r.stake * (r.odds - 1);
+}
+
+if(r.result === "lost"){
+  profit = -r.stake;
+}
+
+csv += `${r.match},${r.market},${r.odds},${r.stake},${r.result},${profit}\n`;
+
 });
-const blob=new Blob([csv],{type:"text/csv"});
-const url=URL.createObjectURL(blob);
-const a=document.createElement("a");
-a.href=url;
-a.download="bet_tracker.csv";
-a.click();
-});
+
+const blob = new Blob([csv],{type:"text/csv"});
+const url = URL.createObjectURL(blob);
+const a = document.createElement("a");
+a.href =
 }
 
 loadBets();
