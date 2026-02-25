@@ -84,24 +84,51 @@ let dailyChart;
 let monthlyChart;
 let marketChart;
 
+
 function renderDailyChart(history, labels){
-if(dailyChart) dailyChart.destroy();
-const ctx=document.getElementById("chart").getContext("2d");
-dailyChart=new Chart(ctx,{
-type:"line",
-data:{
-labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
-datasets:[{
-data:history,
-tension:0.25,
-fill:true,
-backgroundColor:"rgba(34,197,94,0.08)",
-borderColor:"#22c55e",
-borderWidth:2,
-pointRadius:0
-}]
-},
-options:{
+
+  if(dailyChart) dailyChart.destroy();
+
+  const ctx=document.getElementById("chart").getContext("2d");
+
+  // Detect end-of-day indexes
+  const endOfDayIndexes = labels.map((date,i)=>{
+    if(i === labels.length-1) return true;
+    return labels[i] !== labels[i+1];
+  });
+
+  // Find best end-of-day value
+  let bestValue = -Infinity;
+  let bestIndex = -1;
+
+  history.forEach((val,i)=>{
+    if(endOfDayIndexes[i] && val > bestValue){
+      bestValue = val;
+      bestIndex = i;
+    }
+  });
+
+  dailyChart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels: labels,
+      datasets:[{
+        data:history,
+        tension:0.3,
+        fill:true,
+        backgroundColor:"rgba(34,197,94,0.08)",
+        borderColor:"#22c55e",
+        borderWidth:2,
+        pointRadius:(ctx)=>{
+          return endOfDayIndexes[ctx.dataIndex] ? 5 : 0;
+        },
+        pointBackgroundColor:(ctx)=>{
+          return ctx.dataIndex === bestIndex ? "#a855f7" : "#22c55e";
+        },
+        pointHoverRadius:7
+      }]
+    },
+    options:{
       responsive:true,
       maintainAspectRatio:false,
       plugins:{legend:{display:false}},
@@ -119,15 +146,15 @@ options:{
         y:{
           ticks:{
             callback:function(value){
-              return "£" + value;
+              return "£" + Number(value).toLocaleString();
             }
           }
         }
       }
     }
   });
-
 }
+
 
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
@@ -145,12 +172,7 @@ profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
 bankroll=start+profit;history.push(bankroll);
 
 html+=`<tr>
-<td>
-  ${row.match}
-  <div style="font-size:11px; opacity:0.6;">
-    ${new Date(row.created_at).toLocaleDateString('en-GB',{day:'2-digit', month:'short'})}
-  </div>
-</td>
+<td>${row.match}</td>
 <td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
 <td>
 <select 
