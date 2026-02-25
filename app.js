@@ -90,38 +90,19 @@ const ctx=document.getElementById("chart").getContext("2d");
 dailyChart=new Chart(ctx,{
 type:"line",
 data:{
-labels:labels,
+labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
 datasets:[{
 data:history,
-tension:0.15,
+tension:0.25,
 fill:true,
 backgroundColor:"rgba(34,197,94,0.08)",
 borderColor:"#22c55e",
 borderWidth:2,
-pointRadius:4,
-pointHoverRadius:6,
-pointBackgroundColor:"#22c55e"
+pointRadius:0
 }]
 },
-options:{
-responsive:true,
-maintainAspectRatio:false,
-plugins:{legend:{display:false}},
-scales:{
-x:{
-ticks:{
-autoSkip:false,
-maxRotation:45,
-minRotation:45
-},
-grid:{display:false}
-},
-y:{
-grid:{color:"rgba(255,255,255,0.05)"}
-}
-}
-}
-});
+options:{responsive:true,
+        maintainAspectRatio:false,plugins:{legend:{display:false}}}
 });
 }
 
@@ -564,4 +545,18 @@ function toggleMonthly(){
     wrapper.classList.add("collapsed");
     arrow.innerText="▼";
   }
+}
+const startingInput = document.getElementById("startingBankroll");
+
+if(startingInput){
+  // Load saved value
+  const saved = localStorage.getItem("starting_bankroll");
+  if(saved){
+    startingInput.value = saved;
+  }
+
+  // Save on change
+  startingInput.addEventListener("input", function(){
+    localStorage.setItem("starting_bankroll", this.value);
+  });
 }
