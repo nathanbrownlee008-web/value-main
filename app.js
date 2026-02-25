@@ -121,7 +121,7 @@ if(row.result==="lost"){p=-row.stake;losses++;}
 profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
 bankroll=start+profit;history.push(bankroll);
 
-html+=`<tr><td>${row.date || row.game_date || ""}</td><td>${row.match}</td>
+html+=`<tr><td>${row.match_date_date || ""}</td><td>${row.match}</td>
 <td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
 <td>
 <select 
