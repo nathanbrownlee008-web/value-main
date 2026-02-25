@@ -84,65 +84,56 @@ let dailyChart;
 let monthlyChart;
 let marketChart;
 
-function isEndOfDay(index, labels){
-  if(index === labels.length - 1) return true;
-
-  const currentDate = labels[index];
-  const nextDate = labels[index + 1];
-
-  return currentDate !== nextDate;
-}
 
 function renderDailyChart(history, labels){
 
-function renderDailyChart(history, labels){
-if(dailyChart) dailyChart.destroy();
-const ctx=document.getElementById("chart").getContext("2d");
-dailyChart=new Chart(ctx,{
-type:"line",
-data:{
-labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
-datasets: [{
-  data: history,
-  borderColor: "#22c55e",
-  backgroundColor: "rgba(34,197,94,0.15)",
-  fill: true,
-  tension: 0.3,
+  if(dailyChart) dailyChart.destroy();
 
-  pointRadius: (ctx) => {
-    const index = ctx.dataIndex;
-    return isEndOfDay(index, labels) ? 5 : 0;
-  },
+  const ctx=document.getElementById("chart").getContext("2d");
 
-  pointHoverRadius: 6,
-  pointBackgroundColor: "#22c55e",
-  pointBorderWidth: 0
-}]
-options:{
-  responsive:true,
-  maintainAspectRatio:false,
+  // Detect end-of-day indexes
+  const endOfDayIndexes = labels.map((date,i)=>{
+    if(i === labels.length-1) return true;
+    return labels[i] !== labels[i+1];
+  });
 
-  scales:{
-    x:{
-      ticks:{
-        callback:function(value, index){
-          const label = this.getLabelForValue(value);
-
-          if(index === 0) return label;
-
-          const previous = this.getLabelForValue(value - 1);
-
-          return label !== previous ? label : "";
+  dailyChart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels: labels,
+      datasets:[{
+        data:history,
+        tension:0.3,
+        fill:true,
+        backgroundColor:"rgba(34,197,94,0.08)",
+        borderColor:"#22c55e",
+        borderWidth:2,
+        pointRadius:(ctx)=>{
+          return endOfDayIndexes[ctx.dataIndex] ? 5 : 0;
+        },
+        pointHoverRadius:6
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{
+          ticks:{
+            callback:function(value,index){
+              if(index===0) return this.getLabelForValue(value);
+              const current=this.getLabelForValue(value);
+              const prev=this.getLabelForValue(index-1);
+              return current!==prev ? current : "";
+            }
+          }
         }
       }
     }
-  },
+  });
+}
 
-  plugins:{
-    legend:{ display:false }
-  }
-}
-}
 
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
