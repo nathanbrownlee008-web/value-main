@@ -111,16 +111,37 @@ datasets: [{
 
   pointRadius: (ctx) => {
     const index = ctx.dataIndex;
-    return isEndOfDay(index) ? 5 : 0;
+    return isEndOfDay(index, labels) ? 5 : 0;
   },
 
   pointHoverRadius: 6,
   pointBackgroundColor: "#22c55e",
   pointBorderWidth: 0
 }]
-options:{responsive:true,
-        maintainAspectRatio:false,plugins:{legend:{display:false}}}
-});
+options:{
+  responsive:true,
+  maintainAspectRatio:false,
+
+  scales:{
+    x:{
+      ticks:{
+        callback:function(value, index){
+          const label = this.getLabelForValue(value);
+
+          if(index === 0) return label;
+
+          const previous = this.getLabelForValue(value - 1);
+
+          return label !== previous ? label : "";
+        }
+      }
+    }
+  },
+
+  plugins:{
+    legend:{ display:false }
+  }
+}
 }
 
 async function loadTracker(){
