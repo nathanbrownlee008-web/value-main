@@ -310,79 +310,37 @@ loadTracker = async function(){
 };
 
 
-
-function renderMonthlyChart(profits, labels, roi, monthlyData){
+function renderMonthlyChart(monthlyBankroll, monthLabels){
   const el = document.getElementById("monthlyChart");
   if(!el) return;
   if(monthlyChart) monthlyChart.destroy();
 
   const ctx = el.getContext("2d");
-
-  monthlyChart = new Chart(ctx,{
-    type:"bar",
-    data:{
-      labels:labels,
-      datasets:[{
-        data:roi,
-        borderRadius:6,
-        backgroundColor:profits.map(v=>{
-          if(v>0) return "rgba(34,197,94,0.85)";
-          if(v<0) return "rgba(239,68,68,0.85)";
-          return "rgba(100,116,139,0.5)";
-        })
+  monthlyChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        data: monthlyBankroll,
+        tension: 0.25,
+        fill: true,
+        backgroundColor: "rgba(34,197,94,0.08)",
+        borderColor: "#22c55e",
+        borderWidth: 2,
+        pointRadius: 0
       }]
     },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        y:{
-          min:-100,
-          max:100,
-          ticks:{callback:(v)=>v+"%"},
-          grid:{color:"rgba(255,255,255,0.05)"}
-        }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: (v)=>'£'+v } }
       }
-    },
-    plugins:[{
-      afterDatasetsDraw(chart){
-        const {ctx} = chart;
-        chart.getDatasetMeta(0).data.forEach((bar,i)=>{
-          const profit = profits[i];
-          const percent = roi[i];
-
-          ctx.fillStyle="#fff";
-          ctx.font="bold 12px system-ui";
-          ctx.textAlign="center";
-
-          const yOffset = percent >= 0 ? bar.y-6 : bar.y+14;
-          ctx.fillText("£"+profit.toFixed(0), bar.x, yOffset);
-          ctx.fillText(Math.round(percent)+"%", bar.x, yOffset+14);
-        });
-      }
-    }]
+    }
   });
-
-  // Build Breakdown Table
-  const table = document.getElementById("monthlyTable");
-  if(!table) return;
-
-  let html = "<table><tr><th>Month</th><th>Profit</th><th>ROI</th><th>Bets</th><th>W-L</th></tr>";
-
-  monthlyData.forEach((m,i)=>{
-    html += `<tr>
-      <td>${labels[i]}</td>
-      <td class="${m.profit>0?'profit-win':m.profit<0?'profit-loss':''}">£${m.profit.toFixed(2)}</td>
-      <td>${m.stake ? ((m.profit/m.stake)*100).toFixed(1) : 0}%</td>
-      <td>${m.bets}</td>
-      <td>${m.wins}-${m.losses}</td>
-    </tr>`;
-  });
-
-  html += "</table>";
-  table.innerHTML = html;
 }
+
 function renderMarketChart(labels, winPct, totals){
   const el = document.getElementById("marketChart");
   if(!el) return;
@@ -508,20 +466,6 @@ function toggleInsights(){
   }else{
     content.classList.remove("insights-expanded");
     content.classList.add("insights-collapsed");
-    arrow.innerText="▼";
-  }
-}
-
-function toggleMonthly(){
-  const wrapper=document.getElementById("monthlyWrapper");
-  const arrow=document.getElementById("monthlyArrow");
-  if(wrapper.classList.contains("collapsed")){
-    wrapper.classList.remove("collapsed");
-    wrapper.classList.add("expanded");
-    arrow.innerText="▲";
-  }else{
-    wrapper.classList.remove("expanded");
-    wrapper.classList.add("collapsed");
     arrow.innerText="▼";
   }
 }
