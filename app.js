@@ -176,13 +176,22 @@ if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
 
-// Daily labels as dates
+// Hide duplicate day labels but keep per-bet movement
+let lastDate = "";
+
 const dailyLabels = data.map(r=>{
   const d = new Date(r.created_at);
-  return d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
-});
-renderDailyChart(history, dailyLabels);
+  const formatted = d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
 
+  if(formatted === lastDate){
+    return "";
+  }
+
+  lastDate = formatted;
+  return formatted;
+});
+
+renderDailyChart(history, dailyLabels);
 // ---- Monthly & Market analytics (tabs + mini summary) ----
 const countElem = document.getElementById("betCount");
 if(countElem) countElem.textContent = String(data.length);
