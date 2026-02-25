@@ -149,6 +149,10 @@ roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
 winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
 winsElem.innerText=wins;
 lossesElem.innerText=losses;
+const totalBets = wins + losses;
+const totalElem = document.getElementById("totalBets");
+if(totalElem) totalElem.innerText = totalBets;
+
 avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
 
 profitCard.classList.remove("glow-green","glow-red");
