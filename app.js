@@ -85,46 +85,25 @@ let monthlyChart;
 let marketChart;
 
 function renderDailyChart(history, labels){
-  if(dailyChart) dailyChart.destroy();
-  const ctx=document.getElementById("chart").getContext("2d");
-
-  const start = parseFloat(document.getElementById("startingBankroll").value) || 0;
-
-  const max = Math.max(...history, start);
-  const min = Math.min(...history, start);
-
-  const padding = Math.max(10, (max - min) * 0.2);
-
-  dailyChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:(labels && labels.length===history.length)
-        ? labels
-        : history.map((_,i)=>i+1),
-      datasets:[{
-        data:history,
-        tension:0.25,
-        fill:true,
-        backgroundColor:"rgba(34,197,94,0.08)",
-        borderColor:"#22c55e",
-        borderWidth:2,
-        pointRadius: 0,
-pointHoverRadius: 0,
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        y:{
-          min: min - padding,
-          max: max + padding,
-          grid:{color:"rgba(255,255,255,0.05)"}
-        }
-      }
-    }
-  });
+if(dailyChart) dailyChart.destroy();
+const ctx=document.getElementById("chart").getContext("2d");
+dailyChart=new Chart(ctx,{
+type:"line",
+data:{
+labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
+datasets:[{
+data:history,
+tension:0.25,
+fill:true,
+backgroundColor:"rgba(34,197,94,0.08)",
+borderColor:"#22c55e",
+borderWidth:2,
+pointRadius:0
+}]
+},
+options:{responsive:true,
+        maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
 }
 
 async function loadTracker(){
@@ -164,40 +143,26 @@ onchange="updateResult('${row.id}',this.value)">
 html+="</table>";
 trackerTable.innerHTML=html;
 
-bankrollElem.innerText = bankroll.toFixed(2);
-profitElem.innerText = profit.toFixed(2);
-roiElem.innerText = totalStake ? ((profit / totalStake) * 100).toFixed(1) + "%" : "0%";
-winrateElem.innerText = (wins + losses) ? ((wins / (wins + losses)) * 100).toFixed(1) + "%" : "0%";
-winsElem.innerText = wins;
-lossesElem.innerText = losses;
-
-document.getElementById("totalBetsElem").innerText = data.length;
-
-avgOddsElem.innerText = data.length
-  ? (totalOdds / data.length).toFixed(2)
-  : "0";
+bankrollElem.innerText=bankroll.toFixed(2);
+profitElem.innerText=profit.toFixed(2);
+roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
+winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
+winsElem.innerText=wins;
+lossesElem.innerText=losses;
+avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
 
 profitCard.classList.remove("glow-green","glow-red");
 if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
 
-// Hide duplicate day labels but keep per-bet movement
-let lastDate = "";
-
+// Daily labels as dates
 const dailyLabels = data.map(r=>{
   const d = new Date(r.created_at);
-  const formatted = d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
-
-  if(formatted === lastDate){
-    return "";
-  }
-
-  lastDate = formatted;
-  return formatted;
+  return d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
 });
-
 renderDailyChart(history, dailyLabels);
+
 // ---- Monthly & Market analytics (tabs + mini summary) ----
 const countElem = document.getElementById("betCount");
 if(countElem) countElem.textContent = String(data.length);
@@ -309,37 +274,20 @@ loadTracker();
 }
 
 function exportCSV(){
-  client.from("bet_tracker").select("*").then(({ data }) => {
-
-    let csv = "match,market,odds,stake,result,profit\n";
-
-    data.forEach(r => {
-
-      let profit = 0;
-
-      const stake = parseFloat(r.stake);
-      const odds = parseFloat(r.odds);
-
-      if (r.result === "won") {
-        profit = stake * (odds - 1);
-      }
-
-      if (r.result === "lost") {
-        profit = -stake;
-      }
-
-      csv += `${r.match},${r.market},${r.odds},${r.stake},${r.result},${profit}\n`;
-    });
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "bet_tracker.csv";
-    a.click();
-
-  });
+client.from("bet_tracker").select("*").then(({data})=>{
+let csv="match,market,odds,stake,result\n";
+data.forEach(r=>{
+csv+=`${r.match},${r.market},${r.odds},${r.stake},${r.result}\n`;
+});
+const blob=new Blob([csv],{type:"text/csv"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;
+a.download="bet_tracker.csv";
+a.click();
+});
 }
+
 loadBets();
 loadTracker();
 
