@@ -250,54 +250,33 @@ th{text-align:left}
 #monthlyWrapper.collapsed{max-height:0;opacity:0}
 #monthlyWrapper.expanded{max-height:2000px;opacity:1}
 
-@media (max-width: 480px){
-  body{
-    padding:16px;
-  }
-
-  .tracker-controls{
-    flex-direction:column;
-    align-items:flex-start;
-  }
-
-  input{
-    width:100%;
-  }
-
-  .stats-grid{
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .stat-card{
-    padding:14px;
-  }
-}
 
 
-/* --- FIX Starting Bankroll layout (keep inline) --- */
+
+/* -------- CLEAN TRACKER CONTROLS LAYOUT -------- */
 .tracker-controls{
-  display:flex !important;
-  flex-direction:row !important;
-  align-items:center !important;
+  display:flex;
+  align-items:center;
   gap:12px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
 }
 
 .tracker-controls label{
-  white-space:nowrap;
+  min-width:140px;
 }
 
 #startingBankroll{
-  width:110px !important;
+  width:110px;
 }
 
-/* Override mobile stacking */
-@media (max-width: 480px){
-  .tracker-controls{
-    flex-direction:row !important;
-    align-items:center !important;
-  }
+/* -------- FIX RESULT / STAKE WIDTH -------- */
+#trackerTable input[type="number"]{
+  width:65px;
+}
 
-  #startingBankroll{
-    width:110px !important;
-  }
+#trackerTable select{
+  min-width:90px;
+  width:90px;
+  padding:4px 6px;
 }
