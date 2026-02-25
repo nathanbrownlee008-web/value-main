@@ -12,7 +12,7 @@ body{background:#0f172a;color:#e2e8f0;font-family:Inter,sans-serif;margin:0;padd
   display:flex;
   align-items:center;
   gap:12px;
-  margin-bottom:20px;
+  margin-bottom:30px;
   flex-wrap:nowrap;
 }
 input{background:#1e293b;border:1px solid #334155;color:#fff;padding:6px;width:65px;border-radius:6px}
