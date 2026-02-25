@@ -39,55 +39,34 @@
 <div class="stat-card">Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
 </div>
 
-
-
 <div class="insights-wrapper">
   <div class="insights-toggle" onclick="toggleInsights()">
     📊 Insights
     <span id="insightsArrow">▼</span>
   </div>
   <div id="insightsContent" class="insights-collapsed">
-    <div class="insights" id="insightsBlock">
+    <div class="insights">
 
-  <div class="insights-header">
-    <h3 class="insights-title">Insights</h3>
-    <select id="insightSelect" class="insights-select" aria-label="Select insight">
-      <option value="bestMarket">Best Market</option>
-      <option value="worstMarket">Worst Market</option>
-      <option value="bestMonth">Best Month</option>
-      <option value="worstMonth">Worst Month</option>
-    </select>
-  </div>
+      <div class="insights-header">
+        <h3 class="insights-title">Insights</h3>
+        <select id="insightSelect" class="insights-select">
+          <option value="bestMarket">Best Market</option>
+          <option value="worstMarket">Worst Market</option>
+          <option value="bestMonth">Best Month</option>
+          <option value="worstMonth">Worst Month</option>
+        </select>
+      </div>
 
-  <div class="insights-card" id="insightCard">
-    <div class="insight-label" id="insightLabel">Best Market</div>
-    <div class="insight-value" id="insightValue">—</div>
-  </div>
-
-  <!-- hidden values populated by JS -->
-  <div class="insights-hidden" aria-hidden="true">
-    <span id="bestMarket" style="display:none;">—</span>
-    <span id="worstMarket" style="display:none;">—</span>
-    <span id="bestMonth" style="display:none;">—</span>
-    <span id="worstMonth" style="display:none;">—</span>
-  </div>
-</div>
-
-
-  <div class="mini-card">
-    <div class="mini-label">Best Month</div>
-    <div class="mini-value" id="bestMonth">—</div>
-  </div>
-  <div class="mini-card">
-    <div class="mini-label">Worst Month</div>
-    <div class="mini-value" id="worstMonth">—</div>
-  </div>
+      <div class="insights-card">
+        <div class="insight-label" id="insightLabel">Best Market</div>
+        <div class="insight-value" id="insightValue">—</div>
+      </div>
 
     </div>
   </div>
 </div>
 
-<div class="chart-tabs" role="tablist" aria-label="Tracker charts">
+<div class="chart-tabs">
   <button class="tab-btn active" data-tab="daily">Daily</button>
   <button class="tab-btn" data-tab="monthly">Monthly</button>
   <button class="tab-btn" data-tab="market">Markets</button>
@@ -99,12 +78,16 @@
   </div>
   <div class="chart-pane" id="pane-monthly">
     <canvas id="monthlyChart"></canvas>
+    <div class="monthly-breakdown">
+      <div class="monthly-toggle" onclick="toggleMonthly()">📊 Monthly Breakdown <span id="monthlyArrow">▼</span></div>
+      <div id="monthlyWrapper" class="collapsed"><div id="monthlyTable"></div></div>
+    </div>
+    
   </div>
   <div class="chart-pane" id="pane-market">
     <canvas id="marketChart"></canvas>
   </div>
 </div>
-
 
 <div class="tracker-history">
   <div class="tracker-toggle" onclick="toggleTracker()">
@@ -115,7 +98,6 @@
     <div id="trackerTable"></div>
   </div>
 </div>
-
 
 </section>
 
