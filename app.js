@@ -310,36 +310,57 @@ loadTracker = async function(){
 };
 
 
-function renderMonthlyChart(monthlyBankroll, monthLabels){
+
+
+function renderMonthlyChart(profits, roi, labels){
   const el = document.getElementById("monthlyChart");
   if(!el) return;
-  if(monthlyChart) monthlyChart.destroy();
+  if(window.monthlyChart) window.monthlyChart.destroy();
 
   const ctx = el.getContext("2d");
-  monthlyChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: monthLabels,
-      datasets: [{
-        data: monthlyBankroll,
-        tension: 0.25,
-        fill: true,
-        backgroundColor: "rgba(34,197,94,0.08)",
-        borderColor: "#22c55e",
-        borderWidth: 2,
-        pointRadius: 0
+
+  window.monthlyChart = new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:labels,
+      datasets:[{
+        data:roi,
+        borderRadius:12,
+        barThickness:42,
+        backgroundColor:profits.map(v=>{
+          if(v>0) return "rgba(34,197,94,0.9)";
+          if(v<0) return "rgba(239,68,68,0.9)";
+          return "rgba(100,116,139,0.4)";
+        })
       }]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { ticks: { callback: (v)=>'£'+v } }
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{
+          ticks:{callback:(v)=>v+"%"},
+          grid:{color:"rgba(255,255,255,0.06)"}
+        }
       }
-    }
+    },
+    plugins:[{
+      afterDatasetsDraw(chart){
+        const {ctx} = chart;
+        chart.getDatasetMeta(0).data.forEach((bar,i)=>{
+          const val = profits[i];
+          if(val === 0) return;
+          ctx.fillStyle="#fff";
+          ctx.font="bold 14px system-ui";
+          ctx.textAlign="center";
+          ctx.fillText("£"+val.toFixed(0), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
+        });
+      }
+    }]
   });
 }
+
 
 function renderMarketChart(labels, winPct, totals){
   const el = document.getElementById("marketChart");
@@ -469,3 +490,17 @@ function toggleInsights(){
     arrow.innerText="▼";
   }
 }
+
+
+// Auto-close Insights when switching chart tabs
+document.addEventListener("click", function(e){
+  if(e.target.classList.contains("tab-btn")){
+    const content = document.getElementById("insightsContent");
+    const arrow = document.getElementById("insightsArrow");
+    if(content && !content.classList.contains("insights-collapsed")){
+      content.classList.remove("insights-expanded");
+      content.classList.add("insights-collapsed");
+      arrow.innerText="▼";
+    }
+  }
+});
