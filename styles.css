@@ -274,22 +274,14 @@ th{text-align:left}
 }
 
 
-/* Fix Starting Bankroll layout */
-.tracker-controls{
-  align-items:center;
-}
-
-#startingBankroll{
-  width:120px;
-  flex:0 0 auto;
-}
-
-
-/* Prevent stake / result overlap */
-#trackerTable input[type="number"]{
-  width:70px;
-}
-
+/* Tighten Result dropdown width */
 #trackerTable select{
-  min-width:110px;
+  min-width:85px !important;
+  width:85px !important;
+  padding:4px 6px;
+}
+
+/* Keep stake compact */
+#trackerTable input[type="number"]{
+  width:60px;
 }
