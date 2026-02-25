@@ -103,7 +103,7 @@ type:"line",
 data:{
 labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
 datasets: [{
-  data: bankrollData,
+  data: history,
   borderColor: "#22c55e",
   backgroundColor: "rgba(34,197,94,0.15)",
   fill: true,
