@@ -155,7 +155,7 @@ th{text-align:left}
 
 #chart, #monthlyChart, #marketChart{
   width: 100% !important;
-  height: 300px !important;
+  height: 240px !important;
 }
 
 .bet-count{
