@@ -91,16 +91,22 @@ dailyChart=new Chart(ctx,{
 type:"line",
 data:{
 labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
-datasets:[{
-data:history,
-tension:0.25,
-fill:true,
-backgroundColor:"rgba(34,197,94,0.08)",
-borderColor:"#22c55e",
-borderWidth:2,
-pointRadius:0
+datasets: [{
+  data: bankrollData,
+  borderColor: "#22c55e",
+  backgroundColor: "rgba(34,197,94,0.15)",
+  fill: true,
+  tension: 0.3,
+
+  pointRadius: (ctx) => {
+    const index = ctx.dataIndex;
+    return isEndOfDay(index) ? 5 : 0;
+  },
+
+  pointHoverRadius: 6,
+  pointBackgroundColor: "#22c55e",
+  pointBorderWidth: 0
 }]
-},
 options:{responsive:true,
         maintainAspectRatio:false,plugins:{legend:{display:false}}}
 });
