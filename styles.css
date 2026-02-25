@@ -153,9 +153,14 @@ th{text-align:left}
   display: block;
 }
 
-#chart, #monthlyChart, #marketChart{
+#chart, #marketChart{
   width: 100% !important;
   height: 300px !important;
+}
+
+#monthlyChart{
+  width: 100% !important;
+  height: 380px !important;
 }
 
 .bet-count{
@@ -228,7 +233,7 @@ th{text-align:left}
   opacity:1;
 }
 
-.monthly-breakdown{margin-top:20px}
+.monthly-breakdown{margin-top:30px}
 .monthly-toggle{
   background:#1e293b;
   padding:12px;
@@ -240,7 +245,7 @@ th{text-align:left}
 }
 #monthlyWrapper{
   overflow:hidden;
-  transition:max-height 0.35s ease, opacity 0.25s ease;
+  transition:max-height 0.3s ease, opacity 0.3s ease;
 }
 #monthlyWrapper.collapsed{max-height:0;opacity:0}
 #monthlyWrapper.expanded{max-height:2000px;opacity:1}
