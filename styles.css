@@ -274,14 +274,30 @@ th{text-align:left}
 }
 
 
-/* Tighten Result dropdown width */
-#trackerTable select{
-  min-width:85px !important;
-  width:85px !important;
-  padding:4px 6px;
+/* --- FIX Starting Bankroll layout (keep inline) --- */
+.tracker-controls{
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  gap:12px;
 }
 
-/* Keep stake compact */
-#trackerTable input[type="number"]{
-  width:60px;
+.tracker-controls label{
+  white-space:nowrap;
+}
+
+#startingBankroll{
+  width:110px !important;
+}
+
+/* Override mobile stacking */
+@media (max-width: 480px){
+  .tracker-controls{
+    flex-direction:row !important;
+    align-items:center !important;
+  }
+
+  #startingBankroll{
+    width:110px !important;
+  }
 }
