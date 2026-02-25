@@ -97,17 +97,6 @@ function renderDailyChart(history, labels){
     return labels[i] !== labels[i+1];
   });
 
-  // Find best end-of-day value
-  let bestValue = -Infinity;
-  let bestIndex = -1;
-
-  history.forEach((val,i)=>{
-    if(endOfDayIndexes[i] && val > bestValue){
-      bestValue = val;
-      bestIndex = i;
-    }
-  });
-
   dailyChart=new Chart(ctx,{
     type:"line",
     data:{
@@ -122,16 +111,27 @@ function renderDailyChart(history, labels){
         pointRadius:(ctx)=>{
           return endOfDayIndexes[ctx.dataIndex] ? 5 : 0;
         },
-        pointBackgroundColor:(ctx)=>{
-          return ctx.dataIndex === bestIndex ? "#a855f7" : "#22c55e";
-        },
-        pointHoverRadius:7
+        pointBackgroundColor:"#22c55e",
+        pointHoverRadius:8
       }]
     },
     options:{
       responsive:true,
       maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
+      interaction:{
+        mode:'nearest',
+        intersect:false
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label:function(context){
+              return "£" + Number(context.parsed.y).toLocaleString();
+            }
+          }
+        }
+      },
       scales:{
         x:{
           ticks:{
