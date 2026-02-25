@@ -156,24 +156,12 @@ if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
 
-// ---- Daily grouped by date ----
-const dayMap = {};
-
-data.forEach(r=>{
+// Daily labels as dates
+const dailyLabels = data.map(r=>{
   const d = new Date(r.created_at);
-  const key = d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
-  if(!dayMap[key]) dayMap[key] = 0;
-  dayMap[key] += rowProfit(r);
+  return d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
 });
-
-const dayLabels = Object.keys(dayMap);
-let runningDaily = start;
-const dailyHistory = dayLabels.map(label=>{
-  runningDaily += dayMap[label];
-  return runningDaily;
-});
-
-renderDailyChart(dailyHistory, dayLabels);
+renderDailyChart(history, dailyLabels);
 
 // ---- Monthly & Market analytics (tabs + mini summary) ----
 const countElem = document.getElementById("betCount");
