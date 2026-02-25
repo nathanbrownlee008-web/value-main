@@ -84,37 +84,24 @@ let dailyChart;
 let monthlyChart;
 let marketChart;
 
-
 function renderDailyChart(history, labels){
-
-  if(dailyChart) dailyChart.destroy();
-
-  const ctx=document.getElementById("chart").getContext("2d");
-
-  // Detect end-of-day indexes
-  const endOfDayIndexes = labels.map((date,i)=>{
-    if(i === labels.length-1) return true;
-    return labels[i] !== labels[i+1];
-  });
-
-  dailyChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels: labels,
-      datasets:[{
-        data:history,
-        tension:0.3,
-        fill:true,
-        backgroundColor:"rgba(34,197,94,0.08)",
-        borderColor:"#22c55e",
-        borderWidth:2,
-        pointRadius:(ctx)=>{
-          return endOfDayIndexes[ctx.dataIndex] ? 5 : 0;
-        },
-        pointHoverRadius:6
-      }]
-    },
-    options:{
+if(dailyChart) dailyChart.destroy();
+const ctx=document.getElementById("chart").getContext("2d");
+dailyChart=new Chart(ctx,{
+type:"line",
+data:{
+labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
+datasets:[{
+data:history,
+tension:0.25,
+fill:true,
+backgroundColor:"rgba(34,197,94,0.08)",
+borderColor:"#22c55e",
+borderWidth:2,
+pointRadius:0
+}]
+},
+options:{
       responsive:true,
       maintainAspectRatio:false,
       plugins:{legend:{display:false}},
@@ -128,12 +115,19 @@ function renderDailyChart(history, labels){
               return current!==prev ? current : "";
             }
           }
+        },
+        y:{
+          ticks:{
+            callback:function(value){
+              return "£" + value;
+            }
+          }
         }
       }
     }
   });
-}
 
+}
 
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
@@ -151,7 +145,12 @@ profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
 bankroll=start+profit;history.push(bankroll);
 
 html+=`<tr>
-<td>${row.match}</td>
+<td>
+  ${row.match}
+  <div style="font-size:11px; opacity:0.6;">
+    ${new Date(row.created_at).toLocaleDateString('en-GB',{day:'2-digit', month:'short'})}
+  </div>
+</td>
 <td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
 <td>
 <select 
