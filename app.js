@@ -84,6 +84,17 @@ let dailyChart;
 let monthlyChart;
 let marketChart;
 
+function isEndOfDay(index, labels){
+  if(index === labels.length - 1) return true;
+
+  const currentDate = labels[index];
+  const nextDate = labels[index + 1];
+
+  return currentDate !== nextDate;
+}
+
+function renderDailyChart(history, labels){
+
 function renderDailyChart(history, labels){
 if(dailyChart) dailyChart.destroy();
 const ctx=document.getElementById("chart").getContext("2d");
