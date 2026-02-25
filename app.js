@@ -85,25 +85,45 @@ let monthlyChart;
 let marketChart;
 
 function renderDailyChart(history, labels){
-if(dailyChart) dailyChart.destroy();
-const ctx=document.getElementById("chart").getContext("2d");
-dailyChart=new Chart(ctx,{
-type:"line",
-data:{
-labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
-datasets:[{
-data:history,
-tension:0.25,
-fill:true,
-backgroundColor:"rgba(34,197,94,0.08)",
-borderColor:"#22c55e",
-borderWidth:2,
-pointRadius:0
-}]
-},
-options:{responsive:true,
-        maintainAspectRatio:false,plugins:{legend:{display:false}}}
-});
+  if(dailyChart) dailyChart.destroy();
+  const ctx=document.getElementById("chart").getContext("2d");
+
+  const start = parseFloat(document.getElementById("startingBankroll").value) || 0;
+
+  const max = Math.max(...history, start);
+  const min = Math.min(...history, start);
+
+  const padding = Math.max(10, (max - min) * 0.2);
+
+  dailyChart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:(labels && labels.length===history.length)
+        ? labels
+        : history.map((_,i)=>i+1),
+      datasets:[{
+        data:history,
+        tension:0.25,
+        fill:true,
+        backgroundColor:"rgba(34,197,94,0.08)",
+        borderColor:"#22c55e",
+        borderWidth:2,
+        pointRadius:3
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{
+          min: min - padding,
+          max: max + padding,
+          grid:{color:"rgba(255,255,255,0.05)"}
+        }
+      }
+    }
+  });
 }
 
 async function loadTracker(){
