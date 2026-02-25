@@ -84,77 +84,27 @@ let dailyChart;
 let monthlyChart;
 let marketChart;
 
-
 function renderDailyChart(history, labels){
-
-  if(dailyChart) dailyChart.destroy();
-
-  const ctx=document.getElementById("chart").getContext("2d");
-
-  // Detect end-of-day indexes
-  const endOfDayIndexes = labels.map((date,i)=>{
-    if(i === labels.length-1) return true;
-    return labels[i] !== labels[i+1];
-  });
-
-  dailyChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels: labels,
-      datasets:[{
-        data:history,
-        tension:0.3,
-        fill:true,
-        backgroundColor:"rgba(34,197,94,0.08)",
-        borderColor:"#22c55e",
-        borderWidth:2,
-        pointRadius:(ctx)=>{
-          return endOfDayIndexes[ctx.dataIndex] ? 5 : 0;
-        },
-        pointBackgroundColor:"#22c55e",
-        pointHoverRadius:8
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      interaction:{
-        mode:'nearest',
-        intersect:false
-      },
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          callbacks:{
-            label:function(context){
-              return "£" + Number(context.parsed.y).toLocaleString();
-            }
-          }
-        }
-      },
-      scales:{
-        x:{
-          ticks:{
-            callback:function(value,index){
-              if(index===0) return this.getLabelForValue(value);
-              const current=this.getLabelForValue(value);
-              const prev=this.getLabelForValue(index-1);
-              return current!==prev ? current : "";
-            }
-          }
-        },
-        y:{
-          ticks:{
-            callback:function(value){
-              return "£" + Number(value).toLocaleString();
-            }
-          }
-        }
-      }
-    }
-  });
+if(dailyChart) dailyChart.destroy();
+const ctx=document.getElementById("chart").getContext("2d");
+dailyChart=new Chart(ctx,{
+type:"line",
+data:{
+labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
+datasets:[{
+data:history,
+tension:0.25,
+fill:true,
+backgroundColor:"rgba(34,197,94,0.08)",
+borderColor:"#22c55e",
+borderWidth:2,
+pointRadius:0
+}]
+},
+options:{responsive:true,
+        maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
 }
-
 
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
@@ -171,8 +121,7 @@ if(row.result==="lost"){p=-row.stake;losses++;}
 profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
 bankroll=start+profit;history.push(bankroll);
 
-html+=`<tr>
-<td>${row.match}</td>
+html+=`<tr><td>${row.date || row.game_date || ""}</td><td>${row.match}</td>
 <td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
 <td>
 <select 
