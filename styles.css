@@ -302,3 +302,15 @@ th{text-align:left}
 .tracker-controls button{
   justify-self:start;
 }
+
+
+/* --- Fine tune Starting Bankroll row spacing --- */
+.tracker-controls{
+  grid-template-columns: auto 110px auto;
+  column-gap:16px;
+  padding-right:10px; /* pulls content slightly left */
+}
+
+.tracker-controls button{
+  justify-self:end; /* keeps button aligned but not squashed */
+}
