@@ -546,3 +546,17 @@ function toggleMonthly(){
     arrow.innerText="▼";
   }
 }
+const startingInput = document.getElementById("startingBankroll");
+
+if(startingInput){
+  // Load saved value
+  const saved = localStorage.getItem("starting_bankroll");
+  if(saved){
+    startingInput.value = saved;
+  }
+
+  // Save on change
+  startingInput.addEventListener("input", function(){
+    localStorage.setItem("starting_bankroll", this.value);
+  });
+}
