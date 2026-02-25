@@ -108,7 +108,8 @@ function renderDailyChart(history, labels){
         backgroundColor:"rgba(34,197,94,0.08)",
         borderColor:"#22c55e",
         borderWidth:2,
-        pointRadius:3
+        pointRadius: 0,
+pointHoverRadius: 0,
       }]
     },
     options:{
