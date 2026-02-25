@@ -280,3 +280,25 @@ th{text-align:left}
   width:90px;
   padding:4px 6px;
 }
+
+
+/* ---- ALIGN Starting Bankroll + CSV perfectly inline ---- */
+.tracker-controls{
+  display:grid;
+  grid-template-columns: auto 120px auto;
+  align-items:center;
+  gap:12px;
+  margin-bottom:20px;
+}
+
+.tracker-controls label{
+  margin:0;
+}
+
+#startingBankroll{
+  width:120px;
+}
+
+.tracker-controls button{
+  justify-self:start;
+}
