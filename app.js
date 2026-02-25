@@ -164,13 +164,18 @@ onchange="updateResult('${row.id}',this.value)">
 html+="</table>";
 trackerTable.innerHTML=html;
 
-bankrollElem.innerText=bankroll.toFixed(2);
-profitElem.innerText=profit.toFixed(2);
-roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
-winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
-winsElem.innerText=wins;
-lossesElem.innerText=losses;
-avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
+bankrollElem.innerText = bankroll.toFixed(2);
+profitElem.innerText = profit.toFixed(2);
+roiElem.innerText = totalStake ? ((profit / totalStake) * 100).toFixed(1) + "%" : "0%";
+winrateElem.innerText = (wins + losses) ? ((wins / (wins + losses)) * 100).toFixed(1) + "%" : "0%";
+winsElem.innerText = wins;
+lossesElem.innerText = losses;
+
+document.getElementById("totalBetsElem").innerText = data.length;
+
+avgOddsElem.innerText = data.length
+  ? (totalOdds / data.length).toFixed(2)
+  : "0";
 
 profitCard.classList.remove("glow-green","glow-red");
 if(profit>0) profitCard.classList.add("glow-green");
