@@ -253,24 +253,29 @@ th{text-align:left}
 
 
 
-/* -------- CLEAN TRACKER CONTROLS LAYOUT -------- */
+/* ===== FINAL CLEAN STARTING BANKROLL ALIGNMENT ===== */
+
 .tracker-controls{
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:16px;
   margin-bottom:20px;
-  flex-wrap:wrap;
 }
 
 .tracker-controls label{
-  min-width:140px;
+  min-width:160px;
+  margin:0;
 }
 
 #startingBankroll{
   width:110px;
 }
 
-/* -------- FIX RESULT / STAKE WIDTH -------- */
+.tracker-controls button{
+  margin-left:0;
+}
+
+/* keep stake/result sizing */
 #trackerTable input[type="number"]{
   width:65px;
 }
@@ -279,26 +284,4 @@ th{text-align:left}
   min-width:90px;
   width:90px;
   padding:4px 6px;
-}
-
-
-/* ---- ALIGN Starting Bankroll + CSV perfectly inline ---- */
-.tracker-controls{
-  display:grid;
-  grid-template-columns: auto 120px auto;
-  align-items:center;
-  gap:12px;
-  margin-bottom:20px;
-}
-
-.tracker-controls label{
-  margin:0;
-}
-
-#startingBankroll{
-  width:120px;
-}
-
-.tracker-controls button{
-  justify-self:start;
 }
