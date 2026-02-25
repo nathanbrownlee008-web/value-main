@@ -5,14 +5,14 @@ body{background:#0f172a;color:#e2e8f0;font-family:Inter,sans-serif;margin:0;padd
 .tabs button{background:#1e293b;color:#fff;border:none;padding:8px 16px;border-radius:8px;margin:0 5px;cursor:pointer}
 .tabs .active{background:#334155}
 
-.bets-grid{display:grid;gap:14px}
+.bets-grid{display:flex;gap:14px}
 .card{background:#1e293b;padding:16px;border-radius:14px}
 
 .tracker-controls{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
 input{background:#1e293b;border:1px solid #334155;color:#fff;padding:6px;width:65px;border-radius:6px}
 button{background:#334155;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer}
 
-.stats-grid{display:grid;grid-template-columns: repeat(2, 1fr);gap:14px;margin-bottom:25px}
+.stats-grid{display:flex;grid-template-columns: repeat(2, 1fr);gap:14px;margin-bottom:25px}
 .stat-card{background:#1e293b;padding:16px;border-radius:14px;text-align:center}
 .glow-green{box-shadow:0 0 20px rgba(34,197,94,.55)}
 .glow-red{box-shadow:0 0 20px rgba(239,68,68,.55)}
@@ -284,7 +284,7 @@ th{text-align:left}
 
 /* ---- ALIGN Starting Bankroll + CSV perfectly inline ---- */
 .tracker-controls{
-  display:grid;
+  display:flex;
   grid-template-columns: auto 120px auto;
   align-items:center;
   gap:12px;
@@ -306,11 +306,32 @@ th{text-align:left}
 
 /* --- Fine tune Starting Bankroll row spacing --- */
 .tracker-controls{
-  grid-template-columns: auto 110px auto;
-  column-gap:16px;
+  
+  
   padding-right:10px; /* pulls content slightly left */
 }
 
 .tracker-controls button{
   justify-self:end; /* keeps button aligned but not squashed */
+}
+
+
+/* ---- FINAL FIX: Proper alignment using flex ---- */
+.tracker-controls{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:20px;
+}
+
+.tracker-controls label{
+  white-space:nowrap;
+}
+
+#startingBankroll{
+  width:110px;
+}
+
+.tracker-controls button{
+  margin-left:auto; /* pushes CSV to right cleanly */
 }
