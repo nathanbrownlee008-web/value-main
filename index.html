@@ -22,11 +22,12 @@
 <div id="betsGrid" class="bets-grid"></div>
 </section>
 
-<section id="trackerSection" style="display:none;">
-<div class="tracker-controls">
-<label>Starting Bankroll</label>
-<input type="number" id="startingBankroll" value="250"/>
-<button onclick="exportCSV()">Export CSV</button>
+<div class="bankroll-section">
+  <div class="bankroll-row">
+    <label>Starting Bankroll</label>
+    <input type="number" id="startingBankroll" value="290" />
+    <button id="exportCSV">Export CSV</button>
+  </div>
 </div>
 
 <div class="stats-grid">
@@ -37,6 +38,11 @@
 <div class="stat-card">Won<br><strong><span id="wins">0</span></strong></div>
 <div class="stat-card">Lost<br><strong><span id="losses">0</span></strong></div>
 <div class="stat-card">Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
+
+<div class="stat-card">
+Total Bets<br>
+<strong><span id="totalBets">0</span></strong>
+</div>
 </div>
 
 <div class="insights-wrapper">
