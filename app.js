@@ -156,126 +156,17 @@ function _buildTrackerTableHTML(rows){
 }
 
 function _renderFilteredTrackerTable(){
-  const filtered = _applyTrackerFilters(trackerAllRows);
-  _renderTrackerEverything(filtered);
-}
-
-function _renderTrackerEverything(rows){
   const tableEl = document.getElementById("trackerTable");
   const countEl = document.getElementById("betCount");
-  if(tableEl){
-    tableEl.innerHTML = _buildTrackerTableHTML(rows);
-    bindTrackerTableInputs();
-  }
-  if(countEl) countEl.textContent = String((rows||[]).length);
+  if(!tableEl) return;
 
-  const start = parseFloat(document.getElementById("startingBankroll")?.value || "0") || 0;
+  const filtered = _applyTrackerFilters(trackerAllRows);
+  tableEl.innerHTML = _buildTrackerTableHTML(filtered);
+  if(countEl) countEl.textContent = filtered.length;
 
-  let profit = 0, bankroll = start;
-  let wins = 0, losses = 0;
-  let totalStake = 0, totalOdds = 0;
-
-  const history = [];
-  const dailyLabels = [];
-
-  (rows||[]).forEach(r=>{
-    const p = rowProfit(r);
-    profit += p;
-    bankroll = start + profit;
-    history.push(bankroll);
-
-    if(r.result === "won") wins++;
-    else if(r.result === "lost") losses++;
-
-    totalStake += (r.stake || 0);
-    totalOdds += (r.odds || 0);
-
-    const rawDate = r.match_date_date || r.match_date || r.bet_date || r.created_at;
-    dailyLabels.push(fmtDayLabel(rawDate));
-  });
-
-  // If no bets in filter, show flat starting bankroll line (one point)
-  if((rows||[]).length === 0){
-    history.push(start);
-    dailyLabels.push(fmtDayLabel(new Date()));
-  }
-
-  bankrollElem.innerText = bankroll.toFixed(2);
-  profitElem.innerText = profit.toFixed(2);
-  roiElem.innerText = totalStake ? ((profit/totalStake)*100).toFixed(1) : "0";
-  winrateElem.innerText = (wins+losses) ? ((wins/(wins+losses))*100).toFixed(1) : "0";
-  winsElem.innerText = String(wins);
-  lossesElem.innerText = String(losses);
-  avgOddsElem.innerText = (rows||[]).length ? (totalOdds/(rows||[]).length).toFixed(2) : "0";
-
-  profitCard.classList.remove("glow-green","glow-red");
-  if(profit>0) profitCard.classList.add("glow-green");
-  if(profit<0) profitCard.classList.add("glow-red");
-
-  renderDailyChart(history, dailyLabels);
-
-  // ---- Monthly & Market analytics from filtered rows ----
-  const monthMap = {};
-  const monthStakeMap = {};
-  const marketMap = {};
-  const marketWL = {};
-
-  (rows||[]).forEach(r=>{
-    const d = new Date(r.match_date_date || r.match_date || r.bet_date || r.created_at);
-    const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-    monthMap[key] = (monthMap[key]||0) + rowProfit(r);
-    monthStakeMap[key] = (monthStakeMap[key]||0) + (r.stake||0);
-
-    const mk = (r.market || "Unknown");
-    marketMap[mk] = (marketMap[mk]||0) + rowProfit(r);
-
-    if(!marketWL[mk]) marketWL[mk] = { bets:0, wins:0, losses:0, pending:0 };
-    marketWL[mk].bets += 1;
-    if(r.result === "won") marketWL[mk].wins += 1;
-    else if(r.result === "lost") marketWL[mk].losses += 1;
-    else marketWL[mk].pending += 1;
-  });
-
-  const monthKeys = Object.keys(monthMap).sort();
-  const monthLabels = monthKeys.map(k=>{
-    const [y,m]=k.split("-");
-    return new Date(parseInt(y), parseInt(m)-1, 1)
-      .toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
-  });
-
-  const monthlyProfit = monthKeys.map(k=> monthMap[k]);
-  const monthlyROI = monthKeys.map(k=>{
-    const stake = monthStakeMap[k] || 0;
-    return stake ? (monthMap[k] / stake) * 100 : 0;
-  });
-
-  renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
-
-  // Market chart (top 8 by bets)
-  let entries = Object.entries(marketWL);
-  entries.sort((a,b)=>(b[1].bets)-(a[1].bets));
-  entries = entries.slice(0,8);
-
-  const mLabels = entries.map(e=>e[0]);
-  const totals = entries.map(e=>({ bets:e[1].bets, wins:e[1].wins, losses:e[1].losses }));
-  const winPct = entries.map(e=>{
-    const resolved = e[1].wins + e[1].losses;
-    return resolved ? (e[1].wins / resolved) * 100 : 0;
-  });
-
-  renderMarketChart(mLabels, winPct, totals);
-
-  // Mini summary (best/worst market)
-  if(entries.length){
-    const bestM = [...Object.entries(marketMap)].sort((a,b)=>b[1]-a[1])[0];
-    const worstM = [...Object.entries(marketMap)].sort((a,b)=>a[1]-b[1])[0];
-    if(typeof setMiniValue === "function"){
-      setMiniValue("bestMarket", bestM[0]+":", (bestM[1] >= 0 ? "+£" : "-£") + Math.abs(bestM[1]).toFixed(2));
-      setMiniValue("worstMarket", worstM[0]+":", (worstM[1] >= 0 ? "+£" : "-£") + Math.abs(worstM[1]).toFixed(2));
-    }
-  }
+  // re-bind inline input/select listeners for edited rows
+  bindTrackerTableInputs();
 }
-
 
 let _filtersWired = false;
 function wireTrackerFilters(){
@@ -380,11 +271,6 @@ async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
 trackerAllRows = data || [];
 wireTrackerFilters();
-
-// Render using current filters (table + stats + charts)
-_renderFilteredTrackerTable();
-return;
-
 
 let start=parseFloat(document.getElementById("startingBankroll").value);
 let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
