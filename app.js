@@ -548,7 +548,7 @@ function renderMonthlyChart(profits, roi, labels){
           ctx.fillStyle="#fff";
           ctx.font="bold 13px system-ui";
           ctx.textAlign="center";
-          ctx.fillText("£"+val.toFixed(2), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
+          ctx.fillText("£"+val.toFixed(0), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
         });
       }
     }]
