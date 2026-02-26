@@ -83,20 +83,7 @@ Total Bets<br>
     <canvas id="chart"></canvas>
   </div>
   <div class="chart-pane" id="pane-monthly">
-    
     <canvas id="monthlyChart"></canvas>
-
-    <div class="monthly-controls">
-        <button id="monthlyToggleMode">Switch to Profit</button>
-        <button onclick="toggleMonthlyMini()">Monthly Breakdown ▼</button>
-    </div>
-
-    <div id="monthlyMiniWrapper" class="mini-collapsed">
-        <div class="monthly-mini fade-in">
-            <table id="monthlyMiniTable"></table>
-        </div>
-    </div>
-
     <div class="monthly-breakdown">
       <div class="monthly-toggle" onclick="toggleMonthly()">📊 Monthly Breakdown <span id="monthlyArrow">▼</span></div>
       <div id="monthlyWrapper" class="collapsed"><div id="monthlyTable"></div></div>
@@ -114,13 +101,6 @@ Total Bets<br>
     <span id="trackerArrow">▼</span>
   </div>
   <div id="trackerWrapper" class="collapsed">
-    <div class="tracker-filters">
-    <input type="date" id="filterDate">
-    <input type="text" id="filterMarket" placeholder="Market">
-    <button id="todayToggle">Today</button>
-    <button id="clearFilters">Clear</button>
-  </div>
-
   <div id="trackerTable"></div>
   </div>
 </div>

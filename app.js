@@ -83,28 +83,9 @@ document.addEventListener("change", (e)=>{
 
 
 // ===== Tracker Filters (Bet Results) =====
-let trackerAllRows = [];
 
-function _rowGameDateISO(row){
-  const raw = row.match_date_date || row.match_date || row.bet_date || row.created_at;
-  if(!raw) return "";
-  const d = new Date(raw);
-  if(isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0,10); // YYYY-MM-DD
-}
 
-function _applyTrackerFilters(rows){
-  const dateEl = document.getElementById("filterDate");
-  const marketEl = document.getElementById("filterMarket");
-  const dateVal = dateEl ? (dateEl.value || "") : "";
-  const marketVal = marketEl ? (marketEl.value || "").trim().toLowerCase() : "";
 
-  return (rows || []).filter(r=>{
-    // date filter
-    if(dateVal){
-      const iso = _rowGameDateISO(r);
-      if(iso !== dateVal) return false;
-    }
     // market filter (matches market OR match text)
     if(marketVal){
       const m = (r.market || "").toLowerCase();
@@ -115,25 +96,7 @@ function _applyTrackerFilters(rows){
   });
 }
 
-function _buildTrackerTableHTML(rows){
-  let html = `<table>
-    <tr>
-      <th>Date</th>
-      <th>Match</th>
-      <th>Stake</th>
-      <th>Result</th>
-      <th class="profit-col">Profit</th>
-    </tr>`;
-  (rows || []).forEach(row=>{
-    const stakeVal = row.stake ?? 0;
-    const res = row.result || "pending";
-    let profit = 0;
-    if(res === "won") profit = (row.profit != null ? row.profit : row.stake * (row.odds - 1));
-    if(res === "lost") profit = (row.profit != null ? row.profit : -row.stake);
-    if(res === "pending") profit = 0;
-
-    const profitClass = profit >= 0 ? "profit-win" : "profit-loss";
-    const profitText = (profit >= 0 ? `£${profit.toFixed(2)}` : `£${profit.toFixed(2)}`);
+` : `£${profit.toFixed(2)}`);
 
     const dateLabel = fmtLabel(row.match_date_date || row.match_date || row.bet_date || row.created_at);
 
@@ -155,38 +118,10 @@ function _buildTrackerTableHTML(rows){
   return html;
 }
 
-function _renderFilteredTrackerTable(){
-  const tableEl = document.getElementById("trackerTable");
-  const countEl = document.getElementById("betCount");
-  if(!tableEl) return;
 
-  const filtered = _applyTrackerFilters(trackerAllRows);
-  tableEl.innerHTML = _buildTrackerTableHTML(filtered);
-  if(countEl) countEl.textContent = filtered.length;
-
-  // re-bind inline input/select listeners for edited rows
-  bindTrackerTableInputs();
-}
 
 let _filtersWired = false;
-function wireTrackerFilters(){
-  if(_filtersWired) return;
-  _filtersWired = true;
 
-  const dateEl = document.getElementById("filterDate");
-  const marketEl = document.getElementById("filterMarket");
-  const todayBtn = document.getElementById("todayToggle");
-  const clearBtn = document.getElementById("clearFilters");
-
-  if(dateEl) dateEl.addEventListener("change", _renderFilteredTrackerTable);
-  if(marketEl) marketEl.addEventListener("input", _renderFilteredTrackerTable);
-
-  if(todayBtn){
-    todayBtn.addEventListener("click", ()=>{
-      if(dateEl){
-        const today = new Date();
-        dateEl.value = today.toISOString().slice(0,10);
-      }
       _renderFilteredTrackerTable();
     });
   }
@@ -270,7 +205,7 @@ borderWidth:2,
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
 trackerAllRows = data || [];
-wireTrackerFilters();
+
 
 let start=parseFloat(document.getElementById("startingBankroll").value);
 let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
@@ -548,7 +483,7 @@ function renderMonthlyChart(profits, roi, labels){
           ctx.fillStyle="#fff";
           ctx.font="bold 13px system-ui";
           ctx.textAlign="center";
-          ctx.fillText("£"+val.toFixed(0), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
+          ctx.fillText("£"+val.toFixed(2), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
         });
       }
     }]
@@ -726,98 +661,3 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
-
-
-let monthlyMode = "roi";
-
-function toggleMonthlyMini(){
-  const wrap = document.getElementById("monthlyMiniWrapper");
-  if(!wrap) return;
-  if(wrap.classList.contains("mini-collapsed")){
-    wrap.classList.remove("mini-collapsed");
-    wrap.classList.add("mini-expanded");
-  }else{
-    wrap.classList.remove("mini-expanded");
-    wrap.classList.add("mini-collapsed");
-  }
-}
-
-document.addEventListener("click",function(e){
-  if(e.target && e.target.id==="monthlyToggleMode"){
-    monthlyMode = monthlyMode==="roi" ? "profit" : "roi";
-    e.target.innerText = monthlyMode==="roi" ? "Switch to Profit" : "Switch to ROI";
-    loadTracker();
-  }
-});
-
-const originalLoadTrackerUpgrade = loadTracker;
-loadTracker = async function(){
-  await originalLoadTrackerUpgrade();
-
-  const miniTable = document.getElementById("monthlyMiniTable");
-  if(!miniTable) return;
-
-  const {data} = await client.from("bet_tracker").select("*");
-  if(!data) return;
-
-  const monthMap = {};
-  const monthStake = {};
-  const monthWL = {};
-
-  data.forEach(r=>{
-    const d = new Date(r.created_at);
-    const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-
-    if(!monthMap[key]){
-      monthMap[key]=0;
-      monthStake[key]=0;
-      monthWL[key]={wins:0,losses:0};
-    }
-
-    if(r.result==="won"){
-      monthMap[key]+=r.stake*(r.odds-1);
-      monthWL[key].wins++;
-    }
-    if(r.result==="lost"){
-      monthMap[key]-=r.stake;
-      monthWL[key].losses++;
-    }
-
-    monthStake[key]+=r.stake;
-  });
-
-  const keys = Object.keys(monthMap).sort();
-
-  let best=null;
-  let worst=null;
-
-  keys.forEach(k=>{
-    if(best===null || monthMap[k]>monthMap[best]) best=k;
-    if(worst===null || monthMap[k]<monthMap[worst]) worst=k;
-  });
-
-  let html = "<tr><th>Month</th><th>Bets</th><th>Value</th><th>Win%</th></tr>";
-
-  keys.forEach(k=>{
-    const [y,m]=k.split("-");
-    const label = new Date(parseInt(y),parseInt(m)-1,1)
-      .toLocaleDateString("en-GB",{month:"short",year:"2-digit"});
-
-    const bets = monthWL[k].wins + monthWL[k].losses;
-    const winPct = bets ? ((monthWL[k].wins/bets)*100).toFixed(0) : 0;
-
-    const roi = monthStake[k] ? ((monthMap[k]/monthStake[k])*100).toFixed(1) : 0;
-    const value = monthlyMode==="roi" ? roi+"%" : "£"+monthMap[k].toFixed(2);
-
-    const rowClass = k===best ? "best-row" : k===worst ? "worst-row" : "";
-
-    html += `<tr class="${rowClass}">
-      <td>${label}</td>
-      <td>${bets}</td>
-      <td>${value}</td>
-      <td>${winPct}%</td>
-    </tr>`;
-  });
-
-  miniTable.innerHTML = html;
-};
