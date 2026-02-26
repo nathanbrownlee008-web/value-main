@@ -31,10 +31,7 @@ button{background:#334155;color:#fff;border:none;padding:6px 12px;border-radius:
 
 canvas{margin-bottom:20px}
 
-table{
-  width:100%;
-  border-collapse:collapse;
-}
+table{width:100%;border-collapse:collapse;}
 th,td{padding:6px 4px;border-bottom:1px solid #334155;font-size:13px}
 th{text-align:left}
 
@@ -303,17 +300,35 @@ th{text-align:left}
   width:90px;
   padding:4px 6px;
 }
-/* ===== Fix Results Table Squashing ===== */
 
-#trackerTable{
-  overflow-x:auto;
-}
 
-#trackerTable table{
-  min-width:650px;
-}
+/* ===== Mobile Fit Tracker Table ===== */
+@media (max-width: 600px){
 
-#trackerTable th,
-#trackerTable td{
-  white-space:nowrap;
+  #trackerTable th,
+  #trackerTable td{
+    font-size:12px;
+    padding:6px 2px;
+  }
+
+  .date-col{
+    width:60px;
+    font-size:11px;
+  }
+
+  #trackerTable input[type="number"]{
+    width:55px;
+  }
+
+  #trackerTable select{
+    width:75px;
+    min-width:75px;
+    font-size:11px;
+    padding:3px;
+  }
+
+  .profit-col{
+    font-size:12px;
+  }
+
 }
