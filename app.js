@@ -336,12 +336,23 @@ if(countElem) countElem.textContent = String(data.length);
 // Monthly profit aggregation (ROI version)
 const monthMap = {};
 const monthStakeMap = {};
+const monthBetCountMap = {};
 
 data.forEach(r=>{
   const d = new Date(r.created_at);
   const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
-  monthStakeMap[key] = (monthStakeMap[key]||0) + r.stake;
+
+  const stake = Number(r.stake) || 0;
+  const odds = Number(r.odds) || 0;
+  const result = (r.result || "").toLowerCase();
+
+  let profit = 0;
+  if(result === "won") profit = (stake * odds) - stake;
+  if(result === "lost") profit = -stake;
+
+  monthMap[key] = (monthMap[key] || 0) + profit;
+  monthStakeMap[key] = (monthStakeMap[key] || 0) + stake;
+  monthBetCountMap[key] = (monthBetCountMap[key] || 0) + 1;
 });
 
 const monthKeys = Object.keys(monthMap).sort();
