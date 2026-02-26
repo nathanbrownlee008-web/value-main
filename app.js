@@ -81,125 +81,6 @@ document.addEventListener("change", (e)=>{
   }
 });
 
-
-// ===== Tracker Filters (Bet Results) =====
-let trackerAllRows = [];
-
-function _rowGameDateISO(row){
-  const raw = row.match_date_date || row.match_date || row.bet_date || row.created_at;
-  if(!raw) return "";
-  const d = new Date(raw);
-  if(isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0,10); // YYYY-MM-DD
-}
-
-function _applyTrackerFilters(rows){
-  const dateEl = document.getElementById("filterDate");
-  const marketEl = document.getElementById("filterMarket");
-  const dateVal = dateEl ? (dateEl.value || "") : "";
-  const marketVal = marketEl ? (marketEl.value || "").trim().toLowerCase() : "";
-
-  return (rows || []).filter(r=>{
-    // date filter
-    if(dateVal){
-      const iso = _rowGameDateISO(r);
-      if(iso !== dateVal) return false;
-    }
-    // market filter (matches market OR match text)
-    if(marketVal){
-      const m = (r.market || "").toLowerCase();
-      const match = (r.match || "").toLowerCase();
-      if(!m.includes(marketVal) && !match.includes(marketVal)) return false;
-    }
-    return true;
-  });
-}
-
-function _buildTrackerTableHTML(rows){
-  let html = `<table>
-    <tr>
-      <th>Date</th>
-      <th>Match</th>
-      <th>Stake</th>
-      <th>Result</th>
-      <th class="profit-col">Profit</th>
-    </tr>`;
-  (rows || []).forEach(row=>{
-    const stakeVal = row.stake ?? 0;
-    const res = row.result || "pending";
-    let profit = 0;
-    if(res === "won") profit = (row.profit != null ? row.profit : row.stake * (row.odds - 1));
-    if(res === "lost") profit = (row.profit != null ? row.profit : -row.stake);
-    if(res === "pending") profit = 0;
-
-    const profitClass = profit >= 0 ? "profit-win" : "profit-loss";
-    const profitText = (profit >= 0 ? `£${profit.toFixed(2)}` : `£${profit.toFixed(2)}`);
-
-    const dateLabel = fmtLabel(row.match_date_date || row.match_date || row.bet_date || row.created_at);
-
-    html += `<tr>
-      <td class="date-col">${dateLabel}</td>
-      <td>${row.match || ""}</td>
-      <td><input class="stake-input" type="number" value="${stakeVal}" data-id="${row.id}" data-field="stake"></td>
-      <td>
-        <select class="result-select result-${res}" data-id="${row.id}" data-field="result">
-          <option value="pending" ${res==="pending"?"selected":""}>pending</option>
-          <option value="won" ${res==="won"?"selected":""}>won</option>
-          <option value="lost" ${res==="lost"?"selected":""}>lost</option>
-        </select>
-      </td>
-      <td class="profit-col ${profitClass}">${profitText}</td>
-    </tr>`;
-  });
-  html += `</table>`;
-  return html;
-}
-
-function _renderFilteredTrackerTable(){
-  const tableEl = document.getElementById("trackerTable");
-  const countEl = document.getElementById("betCount");
-  if(!tableEl) return;
-
-  const filtered = _applyTrackerFilters(trackerAllRows);
-  tableEl.innerHTML = _buildTrackerTableHTML(filtered);
-  if(countEl) countEl.textContent = filtered.length;
-
-  // re-bind inline input/select listeners for edited rows
-  bindTrackerTableInputs();
-}
-
-let _filtersWired = false;
-function wireTrackerFilters(){
-  if(_filtersWired) return;
-  _filtersWired = true;
-
-  const dateEl = document.getElementById("filterDate");
-  const marketEl = document.getElementById("filterMarket");
-  const todayBtn = document.getElementById("todayToggle");
-  const clearBtn = document.getElementById("clearFilters");
-
-  if(dateEl) dateEl.addEventListener("change", _renderFilteredTrackerTable);
-  if(marketEl) marketEl.addEventListener("input", _renderFilteredTrackerTable);
-
-  if(todayBtn){
-    todayBtn.addEventListener("click", ()=>{
-      if(dateEl){
-        const today = new Date();
-        dateEl.value = today.toISOString().slice(0,10);
-      }
-      _renderFilteredTrackerTable();
-    });
-  }
-
-  if(clearBtn){
-    clearBtn.addEventListener("click", ()=>{
-      if(dateEl) dateEl.value = "";
-      if(marketEl) marketEl.value = "";
-      _renderFilteredTrackerTable();
-    });
-  }
-}
-
 let dailyChart;
 let monthlyChart;
 let marketChart;
@@ -269,8 +150,6 @@ borderWidth:2,
 
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
-trackerAllRows = data || [];
-wireTrackerFilters();
 
 let start=parseFloat(document.getElementById("startingBankroll").value);
 let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
@@ -726,3 +605,77 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
+
+
+// ===== FILTER ENGINE (Option A - Recalculate From Starting Bankroll) =====
+
+let activeBets = [];
+
+function getAllBets(){
+    return typeof bets !== "undefined" ? bets : [];
+}
+
+function applyFilters(){
+    const all = getAllBets();
+    const dateVal = document.getElementById("filterDate")?.value;
+    const marketVal = document.getElementById("filterMarket")?.value?.toLowerCase();
+
+    activeBets = all.filter(b => {
+        let pass = true;
+
+        if(dateVal){
+            const betDate = new Date(b.match_date).toISOString().split("T")[0];
+            if(betDate !== dateVal) pass = false;
+        }
+
+        if(marketVal){
+            if(!b.match.toLowerCase().includes(marketVal)) pass = false;
+        }
+
+        return pass;
+    });
+
+    updateAllUI();
+}
+
+function clearFilters(){
+    document.getElementById("filterDate").value = "";
+    document.getElementById("filterMarket").value = "";
+    activeBets = getAllBets();
+    updateAllUI();
+}
+
+function updateAllUI(){
+    const data = activeBets.length ? activeBets : getAllBets();
+
+    if(typeof renderTrackerTable === "function"){
+        renderTrackerTable(data);
+    }
+
+    if(typeof recalcStats === "function"){
+        recalcStats(data);
+    }
+
+    if(typeof renderDailyChart === "function"){
+        renderDailyChart(data);
+    }
+
+    if(typeof renderMonthlyChart === "function"){
+        renderMonthlyChart(data);
+    }
+}
+
+// Attach listeners
+document.addEventListener("DOMContentLoaded", () => {
+    activeBets = getAllBets();
+
+    document.getElementById("filterDate")?.addEventListener("change", applyFilters);
+    document.getElementById("filterMarket")?.addEventListener("input", applyFilters);
+    document.getElementById("todayToggle")?.addEventListener("click", () => {
+        const today = new Date().toISOString().split("T")[0];
+        document.getElementById("filterDate").value = today;
+        applyFilters();
+    });
+    document.getElementById("clearFilters")?.addEventListener("click", clearFilters);
+});
+
