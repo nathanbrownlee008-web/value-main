@@ -187,12 +187,7 @@ html+="</table>";
 trackerTable.innerHTML=html;
 
 bankrollElem.innerText=bankroll.toFixed(2);
-animateValue(
-  profitElem,
-  parseFloat(profitElem.innerText || 0),
-  profit,
-  500
-);
+profitElem.innerText=profit.toFixed(2);
 roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
 winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
 winsElem.innerText=wins;
@@ -609,22 +604,4 @@ if(startingInput){
   startingInput.addEventListener("input", function(){
     localStorage.setItem("starting_bankroll", this.value);
   });
-}
-
-
-function animateValue(el, start, end, duration){
-  if(isNaN(start)) start = 0;
-  let startTime = null;
-
-  function animate(currentTime){
-    if(!startTime) startTime = currentTime;
-    const progress = Math.min((currentTime - startTime)/duration, 1);
-    const value = start + (end - start)*progress;
-    el.innerText = value.toFixed(2);
-    if(progress < 1){
-      requestAnimationFrame(animate);
-    }
-  }
-
-  requestAnimationFrame(animate);
 }

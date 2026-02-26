@@ -332,3 +332,24 @@ th{text-align:left}
   }
 
 }
+
+
+/* ===== Tracker Filters UI ===== */
+
+.tracker-filters{
+  display:flex;
+  gap:8px;
+  margin:12px 0 10px 0;
+  flex-wrap:wrap;
+}
+
+.tracker-filters input{
+  width:auto;
+  min-width:110px;
+  padding:6px 8px;
+}
+
+.tracker-filters button{
+  padding:6px 10px;
+  font-size:12px;
+}
