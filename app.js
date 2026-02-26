@@ -43,6 +43,7 @@ await client.from("bet_tracker").insert({
 match:row.match,
 market:row.market,
 odds:row.odds,
+match_date_date: row.bet_date,
 stake:10,
 result:"pending"
 });
@@ -84,6 +85,19 @@ let dailyChart;
 let monthlyChart;
 let marketChart;
 
+function fmtDayLabel(d){
+  if(!d) return "";
+  const dt = new Date(d);
+  if(Number.isNaN(dt.getTime())) return String(d);
+  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+function isEndOfDay(index, labels){
+  if(!labels || !labels.length) return false;
+  if(index === labels.length - 1) return true;
+  return labels[index] !== labels[index + 1];
+}
+
 function renderDailyChart(history, labels){
 if(dailyChart) dailyChart.destroy();
 const ctx=document.getElementById("chart").getContext("2d");
@@ -98,11 +112,39 @@ fill:true,
 backgroundColor:"rgba(34,197,94,0.08)",
 borderColor:"#22c55e",
 borderWidth:2,
-pointRadius:0
+	// Show dots ONLY on the last point of each day
+	pointRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 5 : 0,
+	pointHoverRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 7 : 0,
+	pointBackgroundColor:"#22c55e",
+	pointBorderWidth:0
 }]
 },
-options:{responsive:true,
-        maintainAspectRatio:false,plugins:{legend:{display:false}}}
+	options:{
+	  responsive:true,
+	  maintainAspectRatio:false,
+	  interaction:{ mode:"nearest", intersect:true },
+	  scales:{
+	    y:{ ticks:{ callback:(v)=> `£${v}` } },
+	    x:{
+	      ticks:{
+	        callback:function(value, index){
+	          const label = this.getLabelForValue(value);
+	          if(index === 0) return label;
+	          return label !== labels[index - 1] ? label : "";
+	        }
+	      }
+	    }
+	  },
+	  plugins:{
+	    legend:{display:false},
+	    tooltip:{
+	      enabled:true,
+	      callbacks:{
+	        label:(ctx)=> `£${Number(ctx.parsed.y).toFixed(2)}`
+	      }
+	    }
+	  }
+	}
 });
 }
 
@@ -112,7 +154,7 @@ const {data}=await client.from("bet_tracker").select("*").order("created_at",{as
 let start=parseFloat(document.getElementById("startingBankroll").value);
 let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
 
-let html="<table><tr><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
+	let html="<table><tr><th class='date-col'>Date</th><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
 
 data.forEach(row=>{
 let p=0;
@@ -121,8 +163,9 @@ if(row.result==="lost"){p=-row.stake;losses++;}
 profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
 bankroll=start+profit;history.push(bankroll);
 
+const gameDate = row.match_date_date || row.bet_date || row.created_at;
 html+=`<tr>
-<td>${row.match_date_date ? row.match_date_date : ""}</td><td>${row.match}</td>
+<td class="date-col">${fmtDayLabel(gameDate)}</td><td>${row.match}</td>
 <td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
 <td>
 <select 
@@ -161,11 +204,8 @@ if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
 
-// Daily labels as dates
-const dailyLabels = data.map(r=>{
-  const d = new Date(r.created_at);
-  return d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
-});
+// Daily labels based on the *game* date when available
+const dailyLabels = data.map(r => fmtDayLabel(r.match_date_date || r.bet_date || r.created_at));
 renderDailyChart(history, dailyLabels);
 
 // ---- Monthly & Market analytics (tabs + mini summary) ----
