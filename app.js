@@ -360,19 +360,40 @@ const monthlyROI = monthKeys.map(k=>{
 
 renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
 
-  let breakdownHTML = "<table><tr><th>Month</th><th>Profit</th><th>ROI</th></tr>";
-  monthKeys.forEach((k,i)=>{
-    const p = monthlyProfit[i];
-    const r = monthlyROI[i];
-    breakdownHTML += `<tr>
-      <td>${monthLabels[i]}</td>
-      <td class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</td>
-      <td>${r.toFixed(1)}%</td>
-    </tr>`;
-  });
-  breakdownHTML += "</table>";
-  const tableEl = document.getElementById("monthlyTable");
-  if(tableEl) tableEl.innerHTML = breakdownHTML;
+let breakdownHTML = `
+<table>
+<tr>
+<th>Month</th>
+<th>Profit</th>
+<th>ROI</th>
+<th>Bets</th>
+<th>Staked</th>
+</tr>
+`;
+
+monthKeys.forEach((k,i)=>{
+  const p = monthlyProfit[i] || 0;
+  const r = monthlyROI[i] || 0;
+  const stake = monthStakeMap[k] || 0;
+  const bets = monthBetCountMap[k] || 0;
+
+  breakdownHTML += `
+  <tr>
+    <td>${monthLabels[i]}</td>
+    <td class="${p>0?'profit-win':p<0?'profit-loss':''}">
+      £${p.toFixed(2)}
+    </td>
+    <td>${r.toFixed(1)}%</td>
+    <td>${bets}</td>
+    <td>£${stake.toFixed(2)}</td>
+  </tr>
+  `;
+});
+
+breakdownHTML += "</table>";
+
+const tableEl = document.getElementById("monthlyTable");
+if(tableEl) tableEl.innerHTML = breakdownHTML;
 
 // Market profit aggregation
 const marketMap = {};
