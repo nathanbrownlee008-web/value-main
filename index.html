@@ -53,6 +53,18 @@
   <div class="chart-pane active" id="pane-daily">
     <canvas id="chart"></canvas>
   </div>
+  </div> <!-- closes chart-wrap -->
+
+<div class="monthly-breakdown">
+  <div class="monthly-toggle" onclick="toggleMonthly()">
+    📊 Monthly Breakdown
+    <span id="monthlyArrow">▼</span>
+  </div>
+
+  <div id="monthlyWrapper" class="collapsed">
+    <div id="monthlyTable"></div>
+  </div>
+</div>
   <div class="chart-pane" id="pane-monthly">
     <canvas id="monthlyChart"></canvas>
   </div>
