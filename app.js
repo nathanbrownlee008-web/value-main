@@ -665,7 +665,6 @@ function updateAllUI(){
     }
 }
 
-// Attach listeners
 document.addEventListener("DOMContentLoaded", () => {
     activeBets = getAllBets();
 
@@ -678,4 +677,3 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     document.getElementById("clearFilters")?.addEventListener("click", clearFilters);
 });
-
