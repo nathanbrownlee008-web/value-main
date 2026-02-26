@@ -43,6 +43,7 @@ await client.from("bet_tracker").insert({
 match:row.match,
 market:row.market,
 odds:row.odds,
+match_date_date: row.bet_date,
 stake:10,
 result:"pending"
 });
@@ -80,9 +81,250 @@ document.addEventListener("change", (e)=>{
   }
 });
 
+
+// ===== Tracker Filters (Bet Results) =====
+let trackerAllRows = [];
+
+function _rowGameDateISO(row){
+  const raw = row.match_date_date || row.match_date || row.bet_date || row.created_at;
+  if(!raw) return "";
+  const d = new Date(raw);
+  if(isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0,10); // YYYY-MM-DD
+}
+
+function _applyTrackerFilters(rows){
+  const dateEl = document.getElementById("filterDate");
+  const marketEl = document.getElementById("filterMarket");
+  const dateVal = dateEl ? (dateEl.value || "") : "";
+  const marketVal = marketEl ? (marketEl.value || "").trim().toLowerCase() : "";
+
+  return (rows || []).filter(r=>{
+    // date filter
+    if(dateVal){
+      const iso = _rowGameDateISO(r);
+      if(iso !== dateVal) return false;
+    }
+    // market filter (matches market OR match text)
+    if(marketVal){
+      const m = (r.market || "").toLowerCase();
+      const match = (r.match || "").toLowerCase();
+      if(!m.includes(marketVal) && !match.includes(marketVal)) return false;
+    }
+    return true;
+  });
+}
+
+function _buildTrackerTableHTML(rows){
+  let html = `<table>
+    <tr>
+      <th>Date</th>
+      <th>Match</th>
+      <th>Stake</th>
+      <th>Result</th>
+      <th class="profit-col">Profit</th>
+    </tr>`;
+  (rows || []).forEach(row=>{
+    const stakeVal = row.stake ?? 0;
+    const res = row.result || "pending";
+    let profit = 0;
+    if(res === "won") profit = (row.profit != null ? row.profit : row.stake * (row.odds - 1));
+    if(res === "lost") profit = (row.profit != null ? row.profit : -row.stake);
+    if(res === "pending") profit = 0;
+
+    const profitClass = profit >= 0 ? "profit-win" : "profit-loss";
+    const profitText = (profit >= 0 ? `£${profit.toFixed(2)}` : `£${profit.toFixed(2)}`);
+
+    const dateLabel = fmtLabel(row.match_date_date || row.match_date || row.bet_date || row.created_at);
+
+    html += `<tr>
+      <td class="date-col">${dateLabel}</td>
+      <td>${row.match || ""}</td>
+      <td><input class="stake-input" type="number" value="${stakeVal}" data-id="${row.id}" data-field="stake"></td>
+      <td>
+        <select class="result-select result-${res}" data-id="${row.id}" data-field="result">
+          <option value="pending" ${res==="pending"?"selected":""}>pending</option>
+          <option value="won" ${res==="won"?"selected":""}>won</option>
+          <option value="lost" ${res==="lost"?"selected":""}>lost</option>
+        </select>
+      </td>
+      <td class="profit-col ${profitClass}">${profitText}</td>
+    </tr>`;
+  });
+  html += `</table>`;
+  return html;
+}
+
+function _renderFilteredTrackerTable(){
+  const filtered = _applyTrackerFilters(trackerAllRows);
+  _renderTrackerEverything(filtered);
+}
+
+function _renderTrackerEverything(rows){
+  const tableEl = document.getElementById("trackerTable");
+  const countEl = document.getElementById("betCount");
+  if(tableEl){
+    tableEl.innerHTML = _buildTrackerTableHTML(rows);
+    bindTrackerTableInputs();
+  }
+  if(countEl) countEl.textContent = String((rows||[]).length);
+
+  const start = parseFloat(document.getElementById("startingBankroll")?.value || "0") || 0;
+
+  let profit = 0, bankroll = start;
+  let wins = 0, losses = 0;
+  let totalStake = 0, totalOdds = 0;
+
+  const history = [];
+  const dailyLabels = [];
+
+  (rows||[]).forEach(r=>{
+    const p = rowProfit(r);
+    profit += p;
+    bankroll = start + profit;
+    history.push(bankroll);
+
+    if(r.result === "won") wins++;
+    else if(r.result === "lost") losses++;
+
+    totalStake += (r.stake || 0);
+    totalOdds += (r.odds || 0);
+
+    const rawDate = r.match_date_date || r.match_date || r.bet_date || r.created_at;
+    dailyLabels.push(fmtDayLabel(rawDate));
+  });
+
+  // If no bets in filter, show flat starting bankroll line (one point)
+  if((rows||[]).length === 0){
+    history.push(start);
+    dailyLabels.push(fmtDayLabel(new Date()));
+  }
+
+  bankrollElem.innerText = bankroll.toFixed(2);
+  profitElem.innerText = profit.toFixed(2);
+  roiElem.innerText = totalStake ? ((profit/totalStake)*100).toFixed(1) : "0";
+  winrateElem.innerText = (wins+losses) ? ((wins/(wins+losses))*100).toFixed(1) : "0";
+  winsElem.innerText = String(wins);
+  lossesElem.innerText = String(losses);
+  avgOddsElem.innerText = (rows||[]).length ? (totalOdds/(rows||[]).length).toFixed(2) : "0";
+
+  profitCard.classList.remove("glow-green","glow-red");
+  if(profit>0) profitCard.classList.add("glow-green");
+  if(profit<0) profitCard.classList.add("glow-red");
+
+  renderDailyChart(history, dailyLabels);
+
+  // ---- Monthly & Market analytics from filtered rows ----
+  const monthMap = {};
+  const monthStakeMap = {};
+  const marketMap = {};
+  const marketWL = {};
+
+  (rows||[]).forEach(r=>{
+    const d = new Date(r.match_date_date || r.match_date || r.bet_date || r.created_at);
+    const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    monthMap[key] = (monthMap[key]||0) + rowProfit(r);
+    monthStakeMap[key] = (monthStakeMap[key]||0) + (r.stake||0);
+
+    const mk = (r.market || "Unknown");
+    marketMap[mk] = (marketMap[mk]||0) + rowProfit(r);
+
+    if(!marketWL[mk]) marketWL[mk] = { bets:0, wins:0, losses:0, pending:0 };
+    marketWL[mk].bets += 1;
+    if(r.result === "won") marketWL[mk].wins += 1;
+    else if(r.result === "lost") marketWL[mk].losses += 1;
+    else marketWL[mk].pending += 1;
+  });
+
+  const monthKeys = Object.keys(monthMap).sort();
+  const monthLabels = monthKeys.map(k=>{
+    const [y,m]=k.split("-");
+    return new Date(parseInt(y), parseInt(m)-1, 1)
+      .toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+  });
+
+  const monthlyProfit = monthKeys.map(k=> monthMap[k]);
+  const monthlyROI = monthKeys.map(k=>{
+    const stake = monthStakeMap[k] || 0;
+    return stake ? (monthMap[k] / stake) * 100 : 0;
+  });
+
+  renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
+
+  // Market chart (top 8 by bets)
+  let entries = Object.entries(marketWL);
+  entries.sort((a,b)=>(b[1].bets)-(a[1].bets));
+  entries = entries.slice(0,8);
+
+  const mLabels = entries.map(e=>e[0]);
+  const totals = entries.map(e=>({ bets:e[1].bets, wins:e[1].wins, losses:e[1].losses }));
+  const winPct = entries.map(e=>{
+    const resolved = e[1].wins + e[1].losses;
+    return resolved ? (e[1].wins / resolved) * 100 : 0;
+  });
+
+  renderMarketChart(mLabels, winPct, totals);
+
+  // Mini summary (best/worst market)
+  if(entries.length){
+    const bestM = [...Object.entries(marketMap)].sort((a,b)=>b[1]-a[1])[0];
+    const worstM = [...Object.entries(marketMap)].sort((a,b)=>a[1]-b[1])[0];
+    if(typeof setMiniValue === "function"){
+      setMiniValue("bestMarket", bestM[0]+":", (bestM[1] >= 0 ? "+£" : "-£") + Math.abs(bestM[1]).toFixed(2));
+      setMiniValue("worstMarket", worstM[0]+":", (worstM[1] >= 0 ? "+£" : "-£") + Math.abs(worstM[1]).toFixed(2));
+    }
+  }
+}
+
+
+let _filtersWired = false;
+function wireTrackerFilters(){
+  if(_filtersWired) return;
+  _filtersWired = true;
+
+  const dateEl = document.getElementById("filterDate");
+  const marketEl = document.getElementById("filterMarket");
+  const todayBtn = document.getElementById("todayToggle");
+  const clearBtn = document.getElementById("clearFilters");
+
+  if(dateEl) dateEl.addEventListener("change", _renderFilteredTrackerTable);
+  if(marketEl) marketEl.addEventListener("input", _renderFilteredTrackerTable);
+
+  if(todayBtn){
+    todayBtn.addEventListener("click", ()=>{
+      if(dateEl){
+        const today = new Date();
+        dateEl.value = today.toISOString().slice(0,10);
+      }
+      _renderFilteredTrackerTable();
+    });
+  }
+
+  if(clearBtn){
+    clearBtn.addEventListener("click", ()=>{
+      if(dateEl) dateEl.value = "";
+      if(marketEl) marketEl.value = "";
+      _renderFilteredTrackerTable();
+    });
+  }
+}
+
 let dailyChart;
 let monthlyChart;
 let marketChart;
+
+function fmtDayLabel(d){
+  if(!d) return "";
+  const dt = new Date(d);
+  if(Number.isNaN(dt.getTime())) return String(d);
+  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+function isEndOfDay(index, labels){
+  if(!labels || !labels.length) return false;
+  if(index === labels.length - 1) return true;
+  return labels[index] !== labels[index + 1];
+}
 
 function renderDailyChart(history, labels){
 if(dailyChart) dailyChart.destroy();
@@ -98,21 +340,56 @@ fill:true,
 backgroundColor:"rgba(34,197,94,0.08)",
 borderColor:"#22c55e",
 borderWidth:2,
-pointRadius:0
+	// Show dots ONLY on the last point of each day
+	pointRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 5 : 0,
+	pointHoverRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 7 : 0,
+	pointBackgroundColor:"#22c55e",
+	pointBorderWidth:0
 }]
 },
-options:{responsive:true,
-        maintainAspectRatio:false,plugins:{legend:{display:false}}}
+	options:{
+	  responsive:true,
+	  maintainAspectRatio:false,
+	  interaction:{ mode:"nearest", intersect:true },
+	  scales:{
+	    y:{ ticks:{ callback:(v)=> `£${v}` } },
+	    x:{
+	      ticks:{
+	        callback:function(value, index){
+	          const label = this.getLabelForValue(value);
+	          if(index === 0) return label;
+	          return label !== labels[index - 1] ? label : "";
+	        }
+	      }
+	    }
+	  },
+	  plugins:{
+	    legend:{display:false},
+	    tooltip:{
+	      enabled:true,
+	      callbacks:{
+	        label:(ctx)=> `£${Number(ctx.parsed.y).toFixed(2)}`
+	      }
+	    }
+	  }
+	}
 });
 }
 
 async function loadTracker(){
 const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
+trackerAllRows = data || [];
+wireTrackerFilters();
+
+// Render using current filters (table + stats + charts)
+_renderFilteredTrackerTable();
+return;
+
 
 let start=parseFloat(document.getElementById("startingBankroll").value);
 let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
 
-let html="<table><tr><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
+	let html="<table><tr><th class='date-col'>Date</th><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
 
 data.forEach(row=>{
 let p=0;
@@ -121,8 +398,9 @@ if(row.result==="lost"){p=-row.stake;losses++;}
 profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
 bankroll=start+profit;history.push(bankroll);
 
+const gameDate = row.match_date_date || row.bet_date || row.created_at;
 html+=`<tr>
-<td>${row.match}</td>
+<td class="date-col">${fmtDayLabel(gameDate)}</td><td>${row.match}</td>
 <td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
 <td>
 <select 
@@ -149,6 +427,11 @@ roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
 winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
 winsElem.innerText=wins;
 lossesElem.innerText=losses;
+
+const totalBets = data.length;
+const totalElem = document.getElementById("totalBets");
+if(totalElem) totalElem.innerText = totalBets;
+
 avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
 
 profitCard.classList.remove("glow-green","glow-red");
@@ -156,11 +439,8 @@ if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
 
 
-// Daily labels as dates
-const dailyLabels = data.map(r=>{
-  const d = new Date(r.created_at);
-  return d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
-});
+// Daily labels based on the *game* date when available
+const dailyLabels = data.map(r => fmtDayLabel(r.match_date_date || r.bet_date || r.created_at));
 renderDailyChart(history, dailyLabels);
 
 // ---- Monthly & Market analytics (tabs + mini summary) ----
@@ -560,111 +840,3 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
-
-
-// ===== UNIFIED RENDER PIPELINE =====
-
-function renderFromRows(rows){
-  const start=parseFloat(document.getElementById("startingBankroll").value)||0;
-
-  let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0;
-  let history=[start];
-
-  let html=`<table>
-  <tr><th>Date</th><th>Match</th><th>Stake</th><th>Result</th><th class="profit-col">Profit</th></tr>`;
-
-  rows.forEach(r=>{
-    let p=0;
-    if(r.result==="won"){p=r.stake*(r.odds-1);wins++;}
-    if(r.result==="lost"){p=-r.stake;losses++;}
-
-    profit+=p;
-    bankroll=start+profit;
-    history.push(bankroll);
-
-    totalStake+=r.stake;
-    totalOdds+=r.odds;
-
-    html+=`
-    <tr>
-      <td>${new Date(r.match_date_date||r.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}</td>
-      <td>${r.match}</td>
-      <td><input type="number" value="${r.stake}" onchange="updateStake('${r.id}',this.value)"></td>
-      <td>
-        <select onchange="updateResult('${r.id}',this.value)">
-          <option value="pending" ${r.result==="pending"?"selected":""}>pending</option>
-          <option value="won" ${r.result==="won"?"selected":""}>won</option>
-          <option value="lost" ${r.result==="lost"?"selected":""}>lost</option>
-          <option value="delete">delete</option>
-        </select>
-      </td>
-      <td class="profit-col ${p>=0?'profit-win':'profit-loss'}">£${p.toFixed(2)}</td>
-    </tr>`;
-  });
-
-  html+="</table>";
-  document.getElementById("trackerTable").innerHTML=html;
-
-  bankrollElem.innerText=bankroll.toFixed(2);
-  profitElem.innerText=profit.toFixed(2);
-  roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
-  winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
-  winsElem.innerText=wins;
-  lossesElem.innerText=losses;
-  totalBetsElem.innerText=rows.length;
-  avgOddsElem.innerText=rows.length?(totalOdds/rows.length).toFixed(2):0;
-
-  if(dailyChart) dailyChart.destroy();
-
-  const ctx=document.getElementById("chart").getContext("2d");
-  dailyChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:history.map((_,i)=>i),
-      datasets:[{
-        data:history,
-        tension:0.25,
-        fill:true,
-        backgroundColor:"rgba(34,197,94,0.08)",
-        borderColor:"#22c55e",
-        borderWidth:2,
-        pointRadius:3
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{ y:{ticks:{callback:(v)=>"£"+v}} }
-    }
-  });
-}
-
-function applyAll(){
-  const dateVal=document.getElementById("filterDate").value;
-  const marketVal=document.getElementById("filterMarket").value.toLowerCase();
-
-  const filtered=allTrackerRows.filter(r=>{
-    if(dateVal){
-      const iso=new Date(r.match_date_date||r.created_at).toISOString().slice(0,10);
-      if(iso!==dateVal) return false;
-    }
-    if(marketVal){
-      if(!r.market.toLowerCase().includes(marketVal) &&
-         !r.match.toLowerCase().includes(marketVal)) return false;
-    }
-    return true;
-  });
-
-  renderFromRows(filtered);
-}
-
-document.addEventListener("DOMContentLoaded",()=>{
-  document.getElementById("filterDate").addEventListener("change",applyAll);
-  document.getElementById("filterMarket").addEventListener("input",applyAll);
-  document.getElementById("clearFilters").addEventListener("click",()=>{
-    document.getElementById("filterDate").value="";
-    document.getElementById("filterMarket").value="";
-    applyAll();
-  });
-});
