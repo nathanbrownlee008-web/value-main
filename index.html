@@ -54,24 +54,24 @@
     <canvas id="chart"></canvas>
   </div>
   <div class="chart-pane" id="pane-monthly">
-    <canvas id="monthlyChart"></canvas>
+  <canvas id="monthlyChart"></canvas>
+
+  <div class="monthly-breakdown">
+    <div class="monthly-toggle" onclick="toggleMonthlyBreakdown()">
+      📊 Monthly Breakdown
+      <span id="monthlyArrow">▼</span>
+    </div>
+
+    <div id="monthlyWrapper" class="collapsed">
+      <div id="monthlyTable"></div>
+    </div>
   </div>
+
+</div>
   <div class="chart-pane" id="pane-market">
     <canvas id="marketChart"></canvas>
   </div>
 </div>
-
-
-<div class="monthly-breakdown">
-  <div class="monthly-toggle" onclick="toggleMonthly()">
-    📊 Monthly Breakdown
-    <span id="monthlyArrow">▼</span>
-  </div>
-  <div id="monthlyWrapper" class="collapsed">
-    <div id="monthlyTable"></div>
-  </div>
-</div>
-
 <div class="tracker-history">
   <div class="tracker-toggle" onclick="toggleTracker()">
     📈 Bet Results (<span id="betCount">0</span>)
