@@ -8,35 +8,20 @@ body{background:#0f172a;color:#e2e8f0;font-family:Inter,sans-serif;margin:0;padd
 .bets-grid{display:grid;gap:14px}
 .card{background:#1e293b;padding:16px;border-radius:14px}
 
-.tracker-controls{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-bottom:30px;
-  flex-wrap:nowrap;
-}
+.tracker-controls{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
 input{background:#1e293b;border:1px solid #334155;color:#fff;padding:6px;width:65px;border-radius:6px}
 button{background:#334155;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer}
 
-.stats-grid{
-  display:grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap:14px;
-  margin-top:25px;     /* space under Starting Bankroll row */
-  margin-bottom:25px;
-}
+.stats-grid{display:grid;grid-template-columns: repeat(2, 1fr);gap:14px;margin-bottom:25px}
 .stat-card{background:#1e293b;padding:16px;border-radius:14px;text-align:center}
 .glow-green{box-shadow:0 0 20px rgba(34,197,94,.55)}
 .glow-red{box-shadow:0 0 20px rgba(239,68,68,.55)}
 
 canvas{margin-bottom:20px}
 
-table{width:100%;border-collapse:collapse;table-layout:fixed}
+table{width:100%;border-collapse:collapse}
 th,td{padding:6px 4px;border-bottom:1px solid #334155;font-size:13px}
 th{text-align:left}
-
-/* Date column (tracker results) */
-.date-col{width:72px;white-space:nowrap;opacity:0.9}
 
 .profit-col{text-align:right;white-space:nowrap}
 
@@ -265,57 +250,25 @@ th{text-align:left}
 #monthlyWrapper.collapsed{max-height:0;opacity:0}
 #monthlyWrapper.expanded{max-height:2000px;opacity:1}
 
+@media (max-width: 480px){
+  body{
+    padding:16px;
+  }
 
+  .tracker-controls{
+    flex-direction:column;
+    align-items:flex-start;
+  }
 
+  input{
+    width:100%;
+  }
 
-/* ===== FINAL CLEAN STARTING BANKROLL ALIGNMENT ===== */
+  .stats-grid{
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-.tracker-controls{
-  display:flex;
-  align-items:center;
-  gap:16px;
-  margin-bottom:20px;
-}
-
-.tracker-controls label{
-  min-width:160px;
-  margin:0;
-}
-
-#startingBankroll{
-  width:80px;
-}
-
-.tracker-controls button{
-  margin-left:0;
-}
-
-/* keep stake/result sizing */
-#trackerTable input[type="number"]{
-  width:65px;
-}
-
-#trackerTable select{
-  min-width:90px;
-  width:90px;
-  padding:4px 6px;
-}
-
-
-/* ===== Tracker Filters ===== */
-.tracker-filters{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin:12px 0;
-}
-
-.tracker-filters input{
-  padding:6px 8px;
-  min-width:110px;
-}
-
-.tracker-filters button{
-  padding:6px 10px;
-  font-size:12px;
+  .stat-card{
+    padding:14px;
+  }
 }
