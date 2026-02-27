@@ -1,4 +1,10 @@
+*{
+  box-sizing:border-box;
+}
 
+html, body{
+  overflow-x:hidden;
+}
 body{background:#0f172a;color:#e2e8f0;font-family:Inter,sans-serif;margin:0;padding:20px}
 .main-header{text-align:center;margin-bottom:30px}
 .logo-3d{font-size:42px;font-weight:800;color:#fff;text-shadow:0 0 20px rgba(0,255,140,.6)}
@@ -13,19 +19,46 @@ body{background:#0f172a;color:#e2e8f0;font-family:Inter,sans-serif;margin:0;padd
   align-items:center;
   gap:12px;
   margin-bottom:30px;
-  flex-wrap:nowrap;
+  flex-wrap:wrap;
 }
 input{background:#1e293b;border:1px solid #334155;color:#fff;padding:6px;width:65px;border-radius:6px}
 button{background:#334155;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer}
 
 .stats-grid{
   display:grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap:14px;
-  margin-top:25px;     /* space under Starting Bankroll row */
+  margin-top:25px;
   margin-bottom:25px;
 }
-.stat-card{background:#1e293b;padding:16px;border-radius:14px;text-align:center}
+
+@media (min-width: 600px){
+  .stats-grid{
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.stat-card{
+  background:#1e293b;
+  padding:18px 14px;
+  border-radius:14px;
+  text-align:center;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.stat-card strong{
+  display:block;
+  font-size:22px;
+  margin-top:6px;
+  line-height:1.1;
+}
+
+.sub-stat{
+  font-size:11px;
+  opacity:0.7;
+  margin-top:2px;
+}
 .glow-green{box-shadow:0 0 20px rgba(34,197,94,.55)}
 .glow-red{box-shadow:0 0 20px rgba(239,68,68,.55)}
 
@@ -175,7 +208,7 @@ th{text-align:left}
 
 #monthlyChart{
   width: 100% !important;
-  height: 400px !important;
+  height: 300px !important;
 }
 
 .bet-count{
@@ -353,93 +386,8 @@ th{text-align:left}
   padding:6px 10px;
   font-size:12px;
 }
-
-
-/* ===== Monthly Mini Table Upgrade ===== */
-
-.monthly-controls{
-  display:flex;
-  gap:10px;
-  margin:15px 0;
+.sub-stat{
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 4px;
 }
-
-.monthly-controls button{
-  flex:1;
-}
-
-.monthly-mini{
-  background:#1e293b;
-  padding:12px;
-  border-radius:14px;
-}
-
-.monthly-mini table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-.monthly-mini th,
-.monthly-mini td{
-  padding:6px 4px;
-  font-size:12px;
-  border-bottom:1px solid #334155;
-  text-align:center;
-}
-
-.monthly-mini tr.best-row{
-  background:rgba(34,197,94,0.15);
-}
-
-.monthly-mini tr.worst-row{
-  background:rgba(239,68,68,0.15);
-}
-
-#monthlyMiniWrapper{
-  overflow:hidden;
-  transition:max-height .35s ease, opacity .25s ease;
-}
-
-.mini-collapsed{
-  max-height:0;
-  opacity:0;
-}
-
-.mini-expanded{
-  max-height:1000px;
-  opacity:1;
-}
-
-.fade-in{
-  animation:fadeIn .3s ease-in-out;
-}
-
-@keyframes fadeIn{
-  from{opacity:0;transform:translateY(8px)}
-  to{opacity:1;transform:translateY(0)}
-}
-
-
-/* ===== STAT CARD STABILIZATION FIX ===== */
-
-.stat-card{
-  background:#1e293b;
-  padding:16px 12px;
-  border-radius:14px;
-  text-align:center;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  min-height:90px;
-}
-
-.stat-card h3{
-  font-size:14px;
-  margin:0;
-  opacity:0.8;
-}
-
-.stat-card strong{
-  font-size:20px;
-  margin-top:6px;
-}
-

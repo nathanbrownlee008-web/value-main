@@ -318,6 +318,10 @@ const totalBets = data.length;
 const totalElem = document.getElementById("totalBets");
 if(totalElem) totalElem.innerText = totalBets;
 
+const totalStaked = data.reduce((sum, r) => sum + Number(r.stake || 0), 0);
+const stakedElem = document.getElementById("totalStaked");
+if(stakedElem) stakedElem.innerText = totalStaked.toFixed(2);
+
 avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
 
 profitCard.classList.remove("glow-green","glow-red");
@@ -336,12 +340,23 @@ if(countElem) countElem.textContent = String(data.length);
 // Monthly profit aggregation (ROI version)
 const monthMap = {};
 const monthStakeMap = {};
+const monthBetCountMap = {};
 
 data.forEach(r=>{
   const d = new Date(r.created_at);
   const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
-  monthStakeMap[key] = (monthStakeMap[key]||0) + r.stake;
+
+  const stake = Number(r.stake) || 0;
+  const odds = Number(r.odds) || 0;
+  const result = (r.result || "").toLowerCase();
+
+  let profit = 0;
+  if(result === "won") profit = (stake * odds) - stake;
+  if(result === "lost") profit = -stake;
+
+  monthMap[key] = (monthMap[key] || 0) + profit;
+  monthStakeMap[key] = (monthStakeMap[key] || 0) + stake;
+  monthBetCountMap[key] = (monthBetCountMap[key] || 0) + 1;
 });
 
 const monthKeys = Object.keys(monthMap).sort();
@@ -360,19 +375,40 @@ const monthlyROI = monthKeys.map(k=>{
 
 renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
 
-  let breakdownHTML = "<table><tr><th>Month</th><th>Profit</th><th>ROI</th></tr>";
-  monthKeys.forEach((k,i)=>{
-    const p = monthlyProfit[i];
-    const r = monthlyROI[i];
-    breakdownHTML += `<tr>
-      <td>${monthLabels[i]}</td>
-      <td class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</td>
-      <td>${r.toFixed(1)}%</td>
-    </tr>`;
-  });
-  breakdownHTML += "</table>";
-  const tableEl = document.getElementById("monthlyTable");
-  if(tableEl) tableEl.innerHTML = breakdownHTML;
+let breakdownHTML = `
+<table>
+<tr>
+<th>Month</th>
+<th>Profit</th>
+<th>ROI</th>
+<th>Bets</th>
+<th>Staked</th>
+</tr>
+`;
+
+monthKeys.forEach((k,i)=>{
+  const p = monthlyProfit[i] || 0;
+  const r = monthlyROI[i] || 0;
+  const stake = monthStakeMap[k] || 0;
+  const bets = monthBetCountMap[k] || 0;
+
+  breakdownHTML += `
+  <tr>
+    <td>${monthLabels[i]}</td>
+    <td class="${p>0?'profit-win':p<0?'profit-loss':''}">
+      £${p.toFixed(2)}
+    </td>
+    <td>${r.toFixed(1)}%</td>
+    <td>${bets}</td>
+    <td>£${stake.toFixed(2)}</td>
+  </tr>
+  `;
+});
+
+breakdownHTML += "</table>";
+
+const tableEl = document.getElementById("monthlyTable");
+if(tableEl) tableEl.innerHTML = breakdownHTML;
 
 // Market profit aggregation
 const marketMap = {};
@@ -548,7 +584,7 @@ function renderMonthlyChart(profits, roi, labels){
           ctx.fillStyle="#fff";
           ctx.font="bold 13px system-ui";
           ctx.textAlign="center";
-          ctx.fillText("£"+val.toFixed(0), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
+          ctx.fillText("£"+val.toFixed(2), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
         });
       }
     }]
@@ -726,98 +762,3 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
-
-
-let monthlyMode = "roi";
-
-function toggleMonthlyMini(){
-  const wrap = document.getElementById("monthlyMiniWrapper");
-  if(!wrap) return;
-  if(wrap.classList.contains("mini-collapsed")){
-    wrap.classList.remove("mini-collapsed");
-    wrap.classList.add("mini-expanded");
-  }else{
-    wrap.classList.remove("mini-expanded");
-    wrap.classList.add("mini-collapsed");
-  }
-}
-
-document.addEventListener("click",function(e){
-  if(e.target && e.target.id==="monthlyToggleMode"){
-    monthlyMode = monthlyMode==="roi" ? "profit" : "roi";
-    e.target.innerText = monthlyMode==="roi" ? "Switch to Profit" : "Switch to ROI";
-    loadTracker();
-  }
-});
-
-const originalLoadTrackerUpgrade = loadTracker;
-loadTracker = async function(){
-  await originalLoadTrackerUpgrade();
-
-  const miniTable = document.getElementById("monthlyMiniTable");
-  if(!miniTable) return;
-
-  const {data} = await client.from("bet_tracker").select("*");
-  if(!data) return;
-
-  const monthMap = {};
-  const monthStake = {};
-  const monthWL = {};
-
-  data.forEach(r=>{
-    const d = new Date(r.created_at);
-    const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-
-    if(!monthMap[key]){
-      monthMap[key]=0;
-      monthStake[key]=0;
-      monthWL[key]={wins:0,losses:0};
-    }
-
-    if(r.result==="won"){
-      monthMap[key]+=r.stake*(r.odds-1);
-      monthWL[key].wins++;
-    }
-    if(r.result==="lost"){
-      monthMap[key]-=r.stake;
-      monthWL[key].losses++;
-    }
-
-    monthStake[key]+=r.stake;
-  });
-
-  const keys = Object.keys(monthMap).sort();
-
-  let best=null;
-  let worst=null;
-
-  keys.forEach(k=>{
-    if(best===null || monthMap[k]>monthMap[best]) best=k;
-    if(worst===null || monthMap[k]<monthMap[worst]) worst=k;
-  });
-
-  let html = "<tr><th>Month</th><th>Bets</th><th>Value</th><th>Win%</th></tr>";
-
-  keys.forEach(k=>{
-    const [y,m]=k.split("-");
-    const label = new Date(parseInt(y),parseInt(m)-1,1)
-      .toLocaleDateString("en-GB",{month:"short",year:"2-digit"});
-
-    const bets = monthWL[k].wins + monthWL[k].losses;
-    const winPct = bets ? ((monthWL[k].wins/bets)*100).toFixed(0) : 0;
-
-    const roi = monthStake[k] ? ((monthMap[k]/monthStake[k])*100).toFixed(1) : 0;
-    const value = monthlyMode==="roi" ? roi+"%" : "£"+monthMap[k].toFixed(2);
-
-    const rowClass = k===best ? "best-row" : k===worst ? "worst-row" : "";
-
-    html += `<tr class="${rowClass}">
-      <td>${label}</td>
-      <td>${bets}</td>
-      <td>${value}</td>
-      <td>${winPct}%</td>
-    </tr>`;
-  });
-
-  miniTable.innerHTML = html;
-};
