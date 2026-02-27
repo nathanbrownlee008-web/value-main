@@ -252,18 +252,28 @@ options:{responsive:true,
 }
 
 
-async function loadTracker(){
-  const {data: tips, error} = await client
-    .from("bet_tracker")
-    .select("*")
-    .order("created_at",{ascending:true});
+await loadUserResults();
 
-  if(error){
-    console.error(error);
+  const tipIds = Object.keys(userResultsByTipId).map(id => parseInt(id, 10));
+
+  // If user hasn’t added anything yet, show empty tracker
+  if (tipIds.length === 0) {
+    document.getElementById("trackerTable").innerHTML = "";
+    updateStats([]);
+    renderCharts([]);
     return;
   }
 
-  await loadUserResults();
+  const { data: tips, error } = await client
+    .from("bet_tracker")
+    .select("*")
+    .in("id", tipIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
 
   const data = (tips||[]).map(t => {
     const ur = userResultsByTipId[String(t.id)];
