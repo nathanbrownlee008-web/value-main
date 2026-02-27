@@ -119,3 +119,31 @@ th{text-align:left}
 
 .profit-win{color:#22c55e;font-weight:600}
 .profit-loss{color:#ef4444;font-weight:600}
+/* ===== FIX STATS GRID (2 PER ROW ALWAYS) ===== */
+.stats-grid{
+  display:grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap:14px;
+}
+
+/* ===== FIX CHART TABS (HORIZONTAL, NO STRETCH) ===== */
+.chart-tabs{
+  display:flex !important;
+  flex-direction:row !important;
+  width:100% !important;
+  gap:10px;
+  margin:15px 0;
+}
+
+.tab-btn{
+  flex:1 1 0 !important;
+  min-width:0;
+  height:48px;
+  padding:0 10px;
+  border-radius:20px;
+  text-align:center;
+  white-space:nowrap;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
