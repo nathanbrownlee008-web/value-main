@@ -28,14 +28,19 @@ button{background:#334155;color:#fff;border:none;padding:6px 12px;border-radius:
 }
 .stat-card{
   background:#1e293b;
-  padding:16px 14px;
+  padding:18px 14px;
   border-radius:14px;
   text-align:center;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
 }
 .stat-card strong{
   display:block;
-  font-size:20px;
-  margin-top:4px;
+  font-size:22px;
+  margin-top:6px;
+  line-height:1.1;
 }
 
 .sub-stat{
