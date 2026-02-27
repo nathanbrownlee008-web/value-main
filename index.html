@@ -1,92 +1,96 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Top Daily Tips</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="styles.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>Picks Dashboards</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-
-<header class="main-header">
-<h1 class="logo-3d">Top Daily Tips</h1>
-<div class="tabs">
-<button id="tabBets" class="active">Value Bets</button>
-<button id="tabTracker">Tracker</button>
-</div>
-</header>
-
-<section id="betsSection">
-<div id="betsGrid" class="bets-grid"></div>
-</section>
-
-<section id="trackerSection" style="display:none;">
-
-<div class="bankroll-section">
-  <div class="bankroll-row">
-    <label>Starting Bankroll</label>
-    <input type="number" id="startingBankroll" value="290" />
-    <button onclick="exportCSV()">Export CSV</button>
-  </div>
-</div>
-
-<div class="stats-grid">
-<div class="stat-card">Bankroll<br><strong>£<span id="bankroll">0</span></strong></div>
-<div class="stat-card" id="profitCard">Profit<br><strong>£<span id="profit">0</span></strong></div>
-<div class="stat-card">ROI<br><strong><span id="roi">0</span>%</strong></div>
-<div class="stat-card">Win Rate<br><strong><span id="winrate">0</span>%</strong></div>
-<div class="stat-card">Won<br><strong><span id="wins">0</span></strong></div>
-<div class="stat-card">Lost<br><strong><span id="losses">0</span></strong></div>
-<div class="stat-card">Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
-<div class="stat-card">
-  Total Bets<br>
-  <strong><span id="totalBets">0</span></strong>
-  <div class="sub-stat">£<span id="totalStaked">0</span> staked</div>
-</div>
-
-<div class="chart-tabs">
-  <button class="tab-btn active" data-tab="daily">Daily</button>
-  <button class="tab-btn" data-tab="monthly">Monthly</button>
-  <button class="tab-btn" data-tab="market">Markets</button>
-</div>
-
-<div class="chart-wrap">
-  <div class="chart-pane active" id="pane-daily">
-    <canvas id="chart"></canvas>
-  </div>
-  <div class="chart-pane" id="pane-monthly">
-  <canvas id="monthlyChart"></canvas>
-
-  <div class="monthly-breakdown">
-    <div class="monthly-toggle" onclick="toggleMonthly()">
-      📊 Monthly Breakdown
-      <span id="monthlyArrow">▼</span>
+<body class="compact">
+  <header class="topbar">
+    <div class="title">
+      <h1>Picks Dashboards</h1>
+      <p class="subtitle">Over 2.5 • BTTS • Over 1.5 • works offline</p>
     </div>
-
-    <div id="monthlyWrapper" class="collapsed">
-      <div id="monthlyTable"></div>
+    <div class="actions">
+      <button id="installBtn" class="btn hidden">Install</button>
+      <button id="viewBtn" class="btn btn-ghost">Wide</button>
+      <button id="resetBtn" class="btn btn-ghost">Reset</button>
     </div>
-  </div>
+  </header>
 
-</div>
-  <div class="chart-pane" id="pane-market">
-    <canvas id="marketChart"></canvas>
-  </div>
-</div>
-<div class="tracker-history">
-  <div class="tracker-toggle" onclick="toggleTracker()">
-    📈 Bet Results (<span id="betCount">0</span>)
-    <span id="trackerArrow">▼</span>
-  </div>
-  <div id="trackerWrapper" class="collapsed">
-    <div id="trackerTable"></div>
-  </div>
-</div>
+  <main class="container">
+    <section class="controls card">
+      <div class="control span-2">
+        <label>Dashboard</label>
+        <div id="tabs" class="tabs" role="tablist" aria-label="Dashboards"></div>
+      </div>
 
-</section>
+      <div class="control">
+        <label>Search</label>
+        <input id="q" type="search" placeholder="Team, league, pick…" />
+      </div>
 
-<script src="app.js"></script>
+      <div class="control">
+        <label>League</label>
+        <select id="league"></select>
+      </div>
+
+      <div class="control">
+        <label>Pick</label>
+        <select id="pick"></select>
+      </div>
+
+      <div class="control" id="pminWrap">
+        <label id="pminLabel">Min probability</label>
+        <input id="pmin" type="number" step="0.01" min="0" max="1" placeholder="e.g. 0.70" />
+      </div>
+
+      <div class="control">
+        <label>Date from</label>
+        <input id="dfrom" type="date" />
+      </div>
+
+      <div class="control">
+        <label>Date to</label>
+        <input id="dto" type="date" />
+      </div>
+    </section>
+
+    <section class="card tableWrap">
+      <div class="tableMeta">
+        <div>
+          <div id="count"></div>
+          <div id="status" class="small"></div>
+        </div>
+        <div class="small">Tap a card/row for details • click headers to sort</div>
+      </div>
+
+      <div id="cardList" class="cardList"></div>
+
+      <div class="tableScroll">
+        <table id="tbl">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="details" class="dialog">
+    <div class="dialogHeader">
+      <div>
+        <div id="d_title" class="dialogTitle"></div>
+        <div id="d_sub" class="dialogSub"></div>
+      </div>
+      <button id="closeDlg" class="btn btn-ghost">Close</button>
+    </div>
+    <div id="d_body" class="dialogBody"></div>
+  </dialog>
+
+  <script src="app.js"></script>
 </body>
 </html>
