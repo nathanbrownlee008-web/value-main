@@ -318,7 +318,17 @@ const totalBets = data.length;
 const totalElem = document.getElementById("totalBets");
 if(totalElem) totalElem.innerText = totalBets;
 
+const totalStaked = data.reduce((sum, r) => sum + Number(r.stake || 0), 0);
+const stakedElem = document.getElementById("totalStaked");
+if(stakedElem) stakedElem.innerText = totalStaked.toFixed(2);
+
 avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
+
+const totalStakedElem = document.getElementById("totalStaked");
+if(totalStakedElem){
+  totalStakedElem.innerText = totalStake.toFixed(2);
+}
+
 
 profitCard.classList.remove("glow-green","glow-red");
 if(profit>0) profitCard.classList.add("glow-green");
