@@ -1,143 +1,78 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Top Daily Tips</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Top Daily Tips</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
-  <div class="page">
-    <header class="hero">
-      <h1>Top Daily Tips</h1>
-      <div class="tabs">
-        <button id="tabBets" class="tab active">Value Bets</button>
-        <button id="tabTracker" class="tab">Tracker</button>
-      </div>
 
-      <div class="authbar" id="authBar">
-        <div class="auth-left">
-          <div class="auth-status" id="authStatus">Not logged in</div>
-        </div>
-        <div class="auth-right" id="authControls">
-          <input id="email" type="email" placeholder="email" autocomplete="email" />
-          <input id="password" type="password" placeholder="password" autocomplete="current-password" />
-          <button id="btnLogin" class="btn">Log in</button>
-          <button id="btnSignup" class="btn btn-secondary">Sign up</button>
-          <button id="btnLogout" class="btn btn-secondary" style="display:none">Log out</button>
-        </div>
-      </div>
-    </header>
+<header class="main-header">
+<h1 class="logo-3d">Top Daily Tips</h1>
+<div class="tabs">
+<button id="tabBets" class="active">Value Bets</button>
+<button id="tabTracker">Tracker</button>
+</div>
+</header>
 
-    <!-- VALUE BETS (Dashboard layout) -->
-    <section id="betsSection" class="section">
-      <div class="dashTop">
-        <div>
-          <div class="dashTitle">Picks Dashboard</div>
-          <div class="dashSubtitle">Value Bets • powered by Supabase</div>
-          <div class="dashMeta" id="rowsMeta">—</div>
-        </div>
-        <div class="dashActions">
-          <button id="toggleWide" class="btn btn-secondary">Wide</button>
-          <button id="resetFilters" class="btn btn-secondary">Reset</button>
-        </div>
-      </div>
+<section id="betsSection">
+<div id="betsGrid" class="bets-grid"></div>
+</section>
 
-      <div class="filtersCard">
-        <div class="filtersGrid">
-          <div class="field">
-            <label>Search</label>
-            <input id="fSearch" placeholder="Team, league, market…" />
-          </div>
-          <div class="field">
-            <label>League</label>
-            <select id="fLeague"><option value="">All</option></select>
-          </div>
-          <div class="field">
-            <label>Market</label>
-            <select id="fMarket"><option value="">All</option></select>
-          </div>
-          <div class="field">
-            <label>Min probability</label>
-            <input id="fMinProb" inputmode="decimal" placeholder="e.g. 0.70" />
-          </div>
-          <div class="field">
-            <label>Date from</label>
-            <input id="fDateFrom" type="date" />
-          </div>
-          <div class="field">
-            <label>Date to</label>
-            <input id="fDateTo" type="date" />
-          </div>
-        </div>
-      </div>
+<section id="trackerSection" style="display:none;">
 
-      <div class="hint">Tap a row for details • click headers to sort</div>
-
-      <div class="tableWrap" id="betsTableWrap">
-        <table class="dataTable" id="betsTable">
-          <thead>
-            <tr>
-              <th data-key="rank">Rank</th>
-              <th data-key="bet_date">Date</th>
-              <th data-key="league">League</th>
-              <th data-key="match">Match</th>
-              <th data-key="market">Market</th>
-              <th data-key="odds" class="num">Odds</th>
-              <th data-key="probability" class="num">Prob</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="betsTbody"></tbody>
-        </table>
-      </div>
-
-      <div class="rowDetails" id="rowDetails" style="display:none"></div>
-    </section>
-
-    <!-- TRACKER -->
-    <section id="trackerSection" class="section" style="display:none">
-      <div class="trackerTop">
-        <div class="trackerRow">
-          <div class="trackerLabel">Starting Bankroll</div>
-          <input id="startingBankroll" value="42.50" />
-          <button id="exportCSV" class="btn btn-secondary">Export CSV</button>
-        </div>
-
-        <div class="statsGrid">
-          <div class="stat"><div class="k">Bankroll</div><div class="v" id="bankroll">£0</div></div>
-          <div class="stat" id="profitCard"><div class="k">Profit</div><div class="v" id="profit">£0</div></div>
-          <div class="stat"><div class="k">ROI</div><div class="v" id="roi">0%</div></div>
-          <div class="stat"><div class="k">Win Rate</div><div class="v" id="winrate">0%</div></div>
-          <div class="stat"><div class="k">Won</div><div class="v" id="wins">0</div></div>
-          <div class="stat"><div class="k">Lost</div><div class="v" id="losses">0</div></div>
-          <div class="stat"><div class="k">Avg Odds</div><div class="v" id="avgOdds">0</div></div>
-          <div class="stat"><div class="k">Total Bets</div><div class="v" id="totalBets">0</div></div>
-        </div>
-      </div>
-
-      <div class="trackerTableWrap">
-        <table class="dataTable">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Match</th>
-              <th>Market</th>
-              <th class="num">Odds</th>
-              <th class="num">Stake</th>
-              <th>Result</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="trackerTbody"></tbody>
-        </table>
-      </div>
-
-      <div class="smallNote">Tracker is per account. Add bets from the Value Bets tab.</div>
-    </section>
+<div class="bankroll-section">
+  <div class="bankroll-row">
+    <label>Starting Bankroll</label>
+    <input type="number" id="startingBankroll" value="290" />
+    <button onclick="exportCSV()">Export CSV</button>
   </div>
+</div>
 
-  <script src="app.js"></script>
+<div class="stats-grid">
+<div class="stat-card">Bankroll<br><strong>£<span id="bankroll">0</span></strong></div>
+<div class="stat-card" id="profitCard">Profit<br><strong>£<span id="profit">0</span></strong></div>
+<div class="stat-card">ROI<br><strong><span id="roi">0</span>%</strong></div>
+<div class="stat-card">Win Rate<br><strong><span id="winrate">0</span>%</strong></div>
+<div class="stat-card">Won<br><strong><span id="wins">0</span></strong></div>
+<div class="stat-card">Lost<br><strong><span id="losses">0</span></strong></div>
+<div class="stat-card">Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
+<div class="stat-card">Total Bets<br><strong><span id="totalBets">0</span></strong></div>
+</div>
+
+<div class="chart-tabs">
+  <button class="tab-btn active" data-tab="daily">Daily</button>
+  <button class="tab-btn" data-tab="monthly">Monthly</button>
+  <button class="tab-btn" data-tab="market">Markets</button>
+</div>
+
+<div class="chart-wrap">
+  <div class="chart-pane active" id="pane-daily">
+    <canvas id="chart"></canvas>
+  </div>
+  <div class="chart-pane" id="pane-monthly">
+    <canvas id="monthlyChart"></canvas>
+  </div>
+  <div class="chart-pane" id="pane-market">
+    <canvas id="marketChart"></canvas>
+  </div>
+</div>
+
+<div class="tracker-history">
+  <div class="tracker-toggle" onclick="toggleTracker()">
+    📈 Bet Results (<span id="betCount">0</span>)
+    <span id="trackerArrow">▼</span>
+  </div>
+  <div id="trackerWrapper" class="collapsed">
+    <div id="trackerTable"></div>
+  </div>
+</div>
+
+</section>
+
+<script src="app.js"></script>
 </body>
 </html>
