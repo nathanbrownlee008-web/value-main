@@ -37,10 +37,25 @@
 <div class="stat-card" id="profitCard">Profit<br><strong>£<span id="profit">0</span></strong></div>
 <div class="stat-card">ROI<br><strong><span id="roi">0</span>%</strong></div>
 <div class="stat-card">Win Rate<br><strong><span id="winrate">0</span>%</strong></div>
-<div class="stat-card">Won<br><strong><span id="wins">0</span></strong></div>
-<div class="stat-card">Lost<br><strong><span id="losses">0</span></strong></div>
-<div class="stat-card">Avg Odds<br><strong><span id="avgOdds">0</span></strong></div>
-<div class="stat-card">Total Bets<br><strong><span id="totalBets">0</span></strong></div>
+<div class="stat-card">
+  Won - Lost<br>
+  <strong><span id="wonLost">0-0</span></strong>
+</div>
+
+<div class="stat-card">
+  Total Bets<br>
+  <strong><span id="totalBets">0</span></strong>
+</div>
+
+<div class="stat-card">
+  Avg Odds<br>
+  <strong><span id="avgOdds">0</span></strong>
+</div>
+
+<div class="stat-card">
+  Staked<br>
+  <strong>£<span id="totalStakedCard">0</span></strong>
+</div>
 </div>
 
 <div class="chart-tabs">
@@ -55,15 +70,6 @@
   </div>
   <div class="chart-pane" id="pane-monthly">
     <canvas id="monthlyChart"></canvas>
-    <div class="monthly-breakdown">
-      <div class="monthly-toggle" onclick="toggleMonthly()">
-        📊 Monthly Breakdown
-        <span id="monthlyArrow">▼</span>
-      </div>
-      <div id="monthlyWrapper" class="collapsed">
-        <div id="monthlyTable"></div>
-      </div>
-    </div>
   </div>
   <div class="chart-pane" id="pane-market">
     <canvas id="marketChart"></canvas>
@@ -72,10 +78,7 @@
 
 <div class="tracker-history">
   <div class="tracker-toggle" onclick="toggleTracker()">
-    <div class="results-left">
-      📈 Bet Results (<span id="betCount">0</span>)
-      <span id="totalStakedText" class="results-staked"></span>
-    </div>
+    📈 Bet Results (<span id="betCount">0</span>)
     <span id="trackerArrow">▼</span>
   </div>
   <div id="trackerWrapper" class="collapsed">

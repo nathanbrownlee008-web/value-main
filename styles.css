@@ -175,7 +175,7 @@ th{text-align:left}
 
 #monthlyChart{
   width: 100% !important;
-  height: 300px !important;
+  height: 400px !important;
 }
 
 .bet-count{
@@ -352,18 +352,4 @@ th{text-align:left}
 .tracker-filters button{
   padding:6px 10px;
   font-size:12px;
-}
-
-
-.results-left{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-}
-
-.results-staked{
-  font-size:13px;
-  opacity:0.8;
-  font-weight:600;
 }
