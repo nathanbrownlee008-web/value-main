@@ -1,330 +1,100 @@
-*{
-  box-sizing:border-box;
-}
 
-html, body{
-  overflow-x:hidden;
-}
+*{ box-sizing:border-box; }
+
+html, body{ overflow-x:hidden; }
+
 body{
   background:#0f172a;
   color:#e2e8f0;
   font-family:Inter,sans-serif;
   margin:0;
   padding:20px;
-  max-width:100vw;
-  overflow-x:hidden;
 }
+
 .main-header{text-align:center;margin-bottom:30px}
 .logo-3d{font-size:42px;font-weight:800;color:#fff;text-shadow:0 0 20px rgba(0,255,140,.6)}
-.tabs button{background:#1e293b;color:#fff;border:none;padding:8px 16px;border-radius:8px;margin:0 5px;cursor:pointer}
+
+.tabs button{
+  background:#1e293b;
+  color:#fff;
+  border:none;
+  padding:8px 16px;
+  border-radius:8px;
+  margin:0 5px;
+  cursor:pointer
+}
 .tabs .active{background:#334155}
 
-.bets-grid{display:grid;gap:14px}
-.card{background:#1e293b;padding:16px;border-radius:14px}
-
-.tracker-controls{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-bottom:30px;
-  flex-wrap:wrap;
-}
-input{background:#1e293b;border:1px solid #334155;color:#fff;padding:6px;width:65px;border-radius:6px}
-button{background:#334155;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer}
-
-/* ===== FIXED STATS GRID (2 PER ROW ON MOBILE, NO STRETCH) ===== */
-
+/* ===== STATS GRID (ALWAYS 2 PER ROW) ===== */
 .stats-grid{
   display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap:12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap:14px;
   margin-top:25px;
   margin-bottom:25px;
-  width:100%;
 }
 
 .stat-card{
   background:#1e293b;
-  padding:14px 10px;
-  border-radius:14px;
+  padding:20px 16px;
+  border-radius:18px;
   text-align:center;
-
   display:flex;
   flex-direction:column;
   justify-content:center;
-  min-height:85px;
+  min-height:100px;
 }
 
 .stat-card strong{
   display:block;
-  font-size:18px;
+  font-size:24px;
+  margin-top:8px;
+  line-height:1.2;
+}
+
+.sub-stat{
+  font-size:12px;
+  opacity:0.7;
   margin-top:4px;
-  line-height:1.1;
 }
 
-.sub-stat{
-  font-size:11px;
-  opacity:0.7;
-  margin-top:2px;
-}
-.stat-card{
-  background:#1e293b;
-  padding:18px 14px;
-  border-radius:14px;
-  text-align:center;
-
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-}
-.stat-card strong{
-  display:block;
-  font-size:22px;
-  margin-top:6px;
-  line-height:1.1;
-}
-
-.sub-stat{
-  font-size:11px;
-  opacity:0.7;
-  margin-top:2px;
-}
 .glow-green{box-shadow:0 0 20px rgba(34,197,94,.55)}
 .glow-red{box-shadow:0 0 20px rgba(239,68,68,.55)}
 
-canvas{margin-bottom:20px}
-
-table{width:100%;border-collapse:collapse;}
-th,td{padding:6px 4px;border-bottom:1px solid #334155;font-size:13px}
-th{text-align:left}
-
-/* Date column (tracker results) */
-.date-col{width:72px;white-space:nowrap;opacity:0.9}
-
-.profit-col{text-align:right;white-space:nowrap}
-
-.profit-win{color:#22c55e;font-weight:600}
-.profit-loss{color:#ef4444;font-weight:600}
-
-.result-select{border-radius:6px;padding:4px}
-
-.result-won{
-  background:rgba(34,197,94,0.15);
-  color:#22c55e;
-  border:1px solid rgba(34,197,94,0.35);
-}
-
-.result-lost{
-  background:rgba(239,68,68,0.15);
-  color:#ef4444;
-  border:1px solid rgba(239,68,68,0.35);
-}
-
-.result-pending{
-  background:#1e293b;
-  color:#cbd5e1;
-  border:1px solid #334155;
-}
-
-
-/* Enhanced Collapsible */
-.tracker-history{margin-top:20px}
-
-.tracker-toggle{
-  background:#1e293b;
-  padding:12px;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:600;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  transition:0.2s ease;
-}
-
-.tracker-toggle:hover{background:#243044}
-
-#trackerWrapper{
-  overflow:hidden;
-  transition:max-height 0.35s ease, opacity 0.25s ease;
-}
-
-#trackerWrapper.collapsed{
-  max-height:0;
-  opacity:0;
-}
-
-#trackerWrapper.expanded{
-  max-height:2000px;
-  opacity:1;
-}
-
-
-/* Analytics strip */
-.analytics-strip{
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin: 14px 0 10px 0;
-}
-
-.mini-card{
-  background: rgba(30,41,59,0.55);
-  border: 1px solid rgba(51,65,85,0.55);
-  border-radius: 14px;
-  padding: 10px 12px;
-  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
-}
-
-.mini-label{
-  font-size: 12px;
-  opacity: 0.78;
-  margin-bottom: 6px;
-}
-
-.mini-value{
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mini-value.positive{ color: #22c55e; }
-.mini-value.negative{ color: #ef4444; }
-
-/* ===== FINAL MOBILE CHART TAB FIX ===== */
-
+/* ===== CHART TABS FIX ===== */
 .chart-tabs{
-    display:flex !important;
-    flex-direction:row !important;
-    width:100% !important;
-    gap:8px !important;
-    margin:12px 0;
+  display:flex;
+  width:100%;
+  gap:10px;
+  margin:15px 0;
 }
 
-.chart-tabs .tab-btn{
-    display:flex !important;
-    align-items:center;
-    justify-content:center;
-    flex:1 1 0% !important;
-    width:0 !important;
-    min-width:0 !important;
-    padding:12px 0;
-    border-radius:20px;
-    border:1px solid rgba(51,65,85,0.55);
-    background:rgba(30,41,59,0.35);
-    color:#e2e8f0;
-    font-weight:700;
-    font-size:14px;
-    white-space:nowrap;
-}
-
-.tab-btn.active{
-    background:rgba(34,197,94,0.18);
-    border-color:rgba(34,197,94,0.45);
+.tab-btn{
+  flex:1;
+  min-width:0;
+  padding:12px 0;
+  border-radius:20px;
+  border:1px solid rgba(51,65,85,0.6);
+  background:rgba(30,41,59,0.4);
+  color:#e2e8f0;
+  font-weight:700;
+  font-size:14px;
+  text-align:center;
+  white-space:nowrap;
 }
 
 .tab-btn.active{
   background:rgba(34,197,94,0.18);
-  border-color:rgba(34,197,94,0.45);
+  border-color:rgba(34,197,94,0.5);
 }
 
-/* Chart panes */
-.chart-wrap{
-  width: 100%;
-  margin-bottom: 10px;
+/* ===== CHART SIZING ===== */
+#chart, #monthlyChart, #marketChart{
+  width:100% !important;
+  height:300px !important;
 }
 
-.chart-pane{
-  display: none;
-}
-
-.chart-pane.active{
-  display: block;
-}
-
-#chart, #marketChart{
-  width: 100% !important;
-  height: 300px !important;
-}
-
-#monthlyChart{
-  width: 100% !important;
-  height: 300px !important;
-}
-
-.bet-count{
-  opacity: 0.85;
-  font-weight: 800;
-}
-
-
-/* Insights dropdown (replaces 4 mini-cards) */
-.insights{ width:100%; margin: 8px 0 12px; }
-.insights-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 0 2px; }
-.insights-title{ margin:0; font-size: 18px; letter-spacing: 0.2px; }
-.insights-select{
-  appearance:none;
-  background: rgba(255,255,255,0.06);
-  color: #e5e7eb;
-  border: 1px solid rgba(255,255,255,0.12);
-  padding: 10px 14px;
-  border-radius: 16px;
-  font-weight: 700;
-  outline: none;
-  min-width: 150px;
-}
-.insights-select:focus{
-  border-color: rgba(34,197,94,0.55);
-  box-shadow: 0 0 0 3px rgba(34,197,94,0.18);
-}
-
-.insights-card{
-  margin-top: 10px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 18px;
-  padding: 14px 14px;
-}
-.insight-label{ opacity:0.75; font-weight: 700; margin-bottom: 6px; }
-.insight-value{ font-size: 20px; font-weight: 900; letter-spacing: 0.2px; }
-.insights-hidden{ display:none; }
-
-
-/* Collapsible Insights */
-.insights-wrapper{margin:20px 0}
-
-.insights-toggle{
-  background:#1e293b;
-  padding:12px;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:600;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  transition:0.2s ease;
-}
-
-.insights-toggle:hover{background:#243044}
-
-#insightsContent{
-  overflow:hidden;
-  transition:max-height 0.35s ease, opacity 0.25s ease;
-}
-
-.insights-collapsed{
-  max-height:0;
-  opacity:0;
-}
-
-.insights-expanded{
-  max-height:600px;
-  opacity:1;
-}
-
+/* ===== MONTHLY BREAKDOWN ===== */
 .monthly-breakdown{margin-top:20px}
 .monthly-toggle{
   background:#1e293b;
@@ -335,6 +105,7 @@ th{text-align:left}
   display:flex;
   justify-content:space-between;
 }
+
 #monthlyWrapper{
   overflow:hidden;
   transition:max-height 0.35s ease, opacity 0.25s ease;
@@ -342,112 +113,9 @@ th{text-align:left}
 #monthlyWrapper.collapsed{max-height:0;opacity:0}
 #monthlyWrapper.expanded{max-height:2000px;opacity:1}
 
+table{width:100%;border-collapse:collapse;}
+th,td{padding:6px 4px;border-bottom:1px solid #334155;font-size:13px}
+th{text-align:left}
 
-
-
-/* ===== FINAL CLEAN STARTING BANKROLL ALIGNMENT ===== */
-
-.tracker-controls{
-  display:flex;
-  align-items:center;
-  gap:16px;
-  margin-bottom:20px;
-}
-
-.tracker-controls label{
-  min-width:160px;
-  margin:0;
-}
-
-#startingBankroll{
-  width:80px;
-}
-
-.tracker-controls button{
-  margin-left:0;
-}
-
-/* keep stake/result sizing */
-#trackerTable input[type="number"]{
-  width:65px;
-}
-
-#trackerTable select{
-  min-width:90px;
-  width:90px;
-  padding:4px 6px;
-}
-
-
-/* ===== Mobile Fit Tracker Table ===== */
-@media (max-width: 600px){
-
-  #trackerTable th,
-  #trackerTable td{
-    font-size:12px;
-    padding:6px 2px;
-  }
-
-  .date-col{
-    width:60px;
-    font-size:11px;
-  }
-
-  #trackerTable input[type="number"]{
-    width:55px;
-  }
-
-  #trackerTable select{
-    width:75px;
-    min-width:75px;
-    font-size:11px;
-    padding:3px;
-  }
-
-  .profit-col{
-    font-size:12px;
-  }
-
-}
-
-
-/* ===== Tracker Filters UI ===== */
-
-.tracker-filters{
-  display:flex;
-  gap:8px;
-  margin:12px 0 10px 0;
-  flex-wrap:wrap;
-}
-
-.tracker-filters input{
-  width:auto;
-  min-width:110px;
-  padding:6px 8px;
-}
-
-.tracker-filters button{
-  padding:6px 10px;
-  font-size:12px;
-}
-.sub-stat{
-  font-size: 12px;
-  opacity: 0.7;
-  margin-top: 4px;
-}
-/* ===== HARD STOP HORIZONTAL STRETCH ===== */
-
-.chart-wrap,
-.chart-pane,
-canvas {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-canvas {
-  display: block;
-}
-
-body {
-  overflow-x: hidden;
-}
+.profit-win{color:#22c55e;font-weight:600}
+.profit-loss{color:#ef4444;font-weight:600}
