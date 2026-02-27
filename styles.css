@@ -355,39 +355,91 @@ th{text-align:left}
 }
 
 
-/* ===== MOBILE WIDTH & GRID FIX ===== */
+/* ===== Monthly Mini Table Upgrade ===== */
 
-/* Prevent horizontal stretch */
-html, body {
-  margin: 0;
-  max-width: 100%;
-  overflow-x: hidden;
+.monthly-controls{
+  display:flex;
+  gap:10px;
+  margin:15px 0;
 }
 
-/* Stats grid - always 2 per row safely */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  width: 100%;
+.monthly-controls button{
+  flex:1;
 }
 
-/* Ensure cards don't force width */
-.stat-card {
-  width: 100%;
-  min-width: 0;
+.monthly-mini{
+  background:#1e293b;
+  padding:12px;
+  border-radius:14px;
 }
 
-/* Fix lower sections alignment */
-.bets-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-  width: 100%;
+.monthly-mini table{
+  width:100%;
+  border-collapse:collapse;
 }
 
-/* Allow tracker controls to wrap properly */
-.tracker-controls {
-  flex-wrap: wrap;
+.monthly-mini th,
+.monthly-mini td{
+  padding:6px 4px;
+  font-size:12px;
+  border-bottom:1px solid #334155;
+  text-align:center;
+}
+
+.monthly-mini tr.best-row{
+  background:rgba(34,197,94,0.15);
+}
+
+.monthly-mini tr.worst-row{
+  background:rgba(239,68,68,0.15);
+}
+
+#monthlyMiniWrapper{
+  overflow:hidden;
+  transition:max-height .35s ease, opacity .25s ease;
+}
+
+.mini-collapsed{
+  max-height:0;
+  opacity:0;
+}
+
+.mini-expanded{
+  max-height:1000px;
+  opacity:1;
+}
+
+.fade-in{
+  animation:fadeIn .3s ease-in-out;
+}
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+
+/* ===== STAT CARD STABILIZATION FIX ===== */
+
+.stat-card{
+  background:#1e293b;
+  padding:16px 12px;
+  border-radius:14px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-height:90px;
+}
+
+.stat-card h3{
+  font-size:14px;
+  margin:0;
+  opacity:0.8;
+}
+
+.stat-card strong{
+  font-size:20px;
+  margin-top:6px;
 }
 

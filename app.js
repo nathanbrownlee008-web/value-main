@@ -548,7 +548,7 @@ function renderMonthlyChart(profits, roi, labels){
           ctx.fillStyle="#fff";
           ctx.font="bold 13px system-ui";
           ctx.textAlign="center";
-          ctx.fillText("£"+val.toFixed(2), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
+          ctx.fillText("£"+val.toFixed(0), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
         });
       }
     }]
@@ -726,3 +726,98 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
+
+
+let monthlyMode = "roi";
+
+function toggleMonthlyMini(){
+  const wrap = document.getElementById("monthlyMiniWrapper");
+  if(!wrap) return;
+  if(wrap.classList.contains("mini-collapsed")){
+    wrap.classList.remove("mini-collapsed");
+    wrap.classList.add("mini-expanded");
+  }else{
+    wrap.classList.remove("mini-expanded");
+    wrap.classList.add("mini-collapsed");
+  }
+}
+
+document.addEventListener("click",function(e){
+  if(e.target && e.target.id==="monthlyToggleMode"){
+    monthlyMode = monthlyMode==="roi" ? "profit" : "roi";
+    e.target.innerText = monthlyMode==="roi" ? "Switch to Profit" : "Switch to ROI";
+    loadTracker();
+  }
+});
+
+const originalLoadTrackerUpgrade = loadTracker;
+loadTracker = async function(){
+  await originalLoadTrackerUpgrade();
+
+  const miniTable = document.getElementById("monthlyMiniTable");
+  if(!miniTable) return;
+
+  const {data} = await client.from("bet_tracker").select("*");
+  if(!data) return;
+
+  const monthMap = {};
+  const monthStake = {};
+  const monthWL = {};
+
+  data.forEach(r=>{
+    const d = new Date(r.created_at);
+    const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+
+    if(!monthMap[key]){
+      monthMap[key]=0;
+      monthStake[key]=0;
+      monthWL[key]={wins:0,losses:0};
+    }
+
+    if(r.result==="won"){
+      monthMap[key]+=r.stake*(r.odds-1);
+      monthWL[key].wins++;
+    }
+    if(r.result==="lost"){
+      monthMap[key]-=r.stake;
+      monthWL[key].losses++;
+    }
+
+    monthStake[key]+=r.stake;
+  });
+
+  const keys = Object.keys(monthMap).sort();
+
+  let best=null;
+  let worst=null;
+
+  keys.forEach(k=>{
+    if(best===null || monthMap[k]>monthMap[best]) best=k;
+    if(worst===null || monthMap[k]<monthMap[worst]) worst=k;
+  });
+
+  let html = "<tr><th>Month</th><th>Bets</th><th>Value</th><th>Win%</th></tr>";
+
+  keys.forEach(k=>{
+    const [y,m]=k.split("-");
+    const label = new Date(parseInt(y),parseInt(m)-1,1)
+      .toLocaleDateString("en-GB",{month:"short",year:"2-digit"});
+
+    const bets = monthWL[k].wins + monthWL[k].losses;
+    const winPct = bets ? ((monthWL[k].wins/bets)*100).toFixed(0) : 0;
+
+    const roi = monthStake[k] ? ((monthMap[k]/monthStake[k])*100).toFixed(1) : 0;
+    const value = monthlyMode==="roi" ? roi+"%" : "£"+monthMap[k].toFixed(2);
+
+    const rowClass = k===best ? "best-row" : k===worst ? "worst-row" : "";
+
+    html += `<tr class="${rowClass}">
+      <td>${label}</td>
+      <td>${bets}</td>
+      <td>${value}</td>
+      <td>${winPct}%</td>
+    </tr>`;
+  });
+
+  miniTable.innerHTML = html;
+};
