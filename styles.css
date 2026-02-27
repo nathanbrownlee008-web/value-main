@@ -353,3 +353,8 @@ th{text-align:left}
   padding:6px 10px;
   font-size:12px;
 }
+.sub-stat{
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
