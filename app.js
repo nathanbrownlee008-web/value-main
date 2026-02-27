@@ -1,4 +1,28 @@
 
+
+// --- TABLE RENDER (Value Bets) ---
+function renderValueBetsTable(bets){
+  const body = document.getElementById("betsBody");
+  if(!body) return;
+  body.innerHTML = "";
+
+  bets.forEach(b=>{
+    const tr = document.createElement("tr");
+    const match = `${b.home_team || b.Home || ""} vs ${b.away_team || b.Away || ""}`;
+
+    tr.innerHTML = `
+      <td>${b.date || b.bet_date || ""}</td>
+      <td>${b.league || ""}</td>
+      <td>${match}</td>
+      <td>${b.market || ""}</td>
+      <td>${b.odds || ""}</td>
+      <td><button class="add-btn" onclick="addToTracker(${b.id})">+</button></td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
 const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
 const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);

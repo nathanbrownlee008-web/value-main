@@ -353,3 +353,31 @@ th{text-align:left}
   padding:6px 10px;
   font-size:12px;
 }
+
+
+/* VALUE BETS TABLE */
+.bets-table-wrap{
+  background:#1e293b;
+  border-radius:14px;
+  padding:10px;
+}
+
+#betsTable{
+  width:100%;
+  border-collapse:collapse;
+}
+
+#betsTable th, #betsTable td{
+  padding:8px;
+  border-bottom:1px solid #334155;
+  text-align:left;
+}
+
+.add-btn{
+  background:#22c55e;
+  border:none;
+  padding:6px 10px;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:700;
+}
