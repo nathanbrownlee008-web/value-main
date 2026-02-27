@@ -26,7 +26,7 @@ button{background:#334155;color:#fff;border:none;padding:6px 12px;border-radius:
 
 .stats-grid{
   display:grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap:14px;
   margin-top:25px;
   margin-bottom:25px;
@@ -393,19 +393,12 @@ th{text-align:left}
 }
 
 
-/* ===== Chart Summary (Total Staked under charts) ===== */
-
-.chart-summary{
-  margin: 15px 0 10px 0;
-  display:flex;
-  justify-content:center;
-}
-
-.chart-summary-card{
-  background:#1e293b;
-  padding:14px 20px;
-  border-radius:14px;
-  text-align:center;
-  font-weight:600;
-  min-width:180px;
+/* ===== FORCE 2 COLUMN STATS GRID (ALL DEVICES) ===== */
+.stats-grid{
+  display:grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap:14px !important;
+  margin-top:25px !important;
+  margin-bottom:25px !important;
+  width:100% !important;
 }

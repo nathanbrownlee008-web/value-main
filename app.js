@@ -324,12 +324,6 @@ if(stakedElem) stakedElem.innerText = totalStaked.toFixed(2);
 
 avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
 
-const totalStakedElem = document.getElementById("totalStaked");
-if(totalStakedElem){
-  totalStakedElem.innerText = totalStake.toFixed(2);
-}
-
-
 profitCard.classList.remove("glow-green","glow-red");
 if(profit>0) profitCard.classList.add("glow-green");
 if(profit<0) profitCard.classList.add("glow-red");
