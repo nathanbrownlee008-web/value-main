@@ -318,10 +318,6 @@ const totalBets = data.length;
 const totalElem = document.getElementById("totalBets");
 if(totalElem) totalElem.innerText = totalBets;
 
-const totalStaked = data.reduce((sum, r) => sum + Number(r.stake || 0), 0);
-const stakedElem = document.getElementById("totalStaked");
-if(stakedElem) stakedElem.innerText = totalStaked.toFixed(2);
-
 avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
 
 profitCard.classList.remove("glow-green","glow-red");
