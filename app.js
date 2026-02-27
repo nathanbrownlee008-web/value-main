@@ -3,6 +3,151 @@ const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
 const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
 const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
+let currentUser = null;
+let userResultsByTipId = {}; // tip_id -> {id, tip_id, stake, result}
+
+// --- Auth helpers ---
+async function initAuth(){
+  // Wire buttons (if present)
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  if(loginBtn) loginBtn.addEventListener('click', login);
+  if(signupBtn) signupBtn.addEventListener('click', signup);
+  if(logoutBtn) logoutBtn.addEventListener('click', logout);
+
+  // Initial session
+  const { data: { session } } = await client.auth.getSession();
+  currentUser = session?.user ?? null;
+  renderAuthStatus();
+
+  // React to auth changes
+  client.auth.onAuthStateChange((_event, session2) => {
+    currentUser = session2?.user ?? null;
+    userResultsByTipId = {};
+    renderAuthStatus();
+    // Reload tracker UI with per-user results
+    loadTracker();
+  });
+}
+
+function renderAuthStatus(){
+  const statusEl = document.getElementById('authStatus');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+  const emailEl = document.getElementById('authEmail');
+  const passEl = document.getElementById('authPassword');
+
+  if(!statusEl) return;
+
+  if(currentUser){
+    statusEl.textContent = `Logged in: ${currentUser.email ?? currentUser.id}`;
+    if(logoutBtn) logoutBtn.style.display = '';
+    if(loginBtn) loginBtn.style.display = 'none';
+    if(signupBtn) signupBtn.style.display = 'none';
+    if(emailEl) emailEl.style.display = 'none';
+    if(passEl) passEl.style.display = 'none';
+  }else{
+    statusEl.textContent = 'Not logged in';
+    if(logoutBtn) logoutBtn.style.display = 'none';
+    if(loginBtn) loginBtn.style.display = '';
+    if(signupBtn) signupBtn.style.display = '';
+    if(emailEl) emailEl.style.display = '';
+    if(passEl) passEl.style.display = '';
+  }
+}
+
+async function login(){
+  const email = document.getElementById('authEmail')?.value?.trim();
+  const password = document.getElementById('authPassword')?.value;
+  if(!email || !password) return alert('Enter email + password');
+  const { error } = await client.auth.signInWithPassword({ email, password });
+  if(error) alert(error.message);
+}
+
+async function signup(){
+  const email = document.getElementById('authEmail')?.value?.trim();
+  const password = document.getElementById('authPassword')?.value;
+  if(!email || !password) return alert('Enter email + password');
+  const { error } = await client.auth.signUp({ email, password });
+  if(error) alert(error.message);
+  else alert('Sign up successful. If email confirmation is enabled, check your inbox.');
+}
+
+async function logout(){
+  const { error } = await client.auth.signOut();
+  if(error) alert(error.message);
+}
+
+// --- User results (per account) ---
+async function loadUserResults(){
+  if(!currentUser){
+    userResultsByTipId = {};
+    return;
+  }
+  const { data, error } = await client
+    .from('user_results')
+    .select('id, tip_id, stake, result')
+    .eq('user_id', currentUser.id);
+
+  if(error){
+    console.error(error);
+    userResultsByTipId = {};
+    return;
+  }
+  userResultsByTipId = {};
+  (data || []).forEach(r => { userResultsByTipId[String(r.tip_id)] = r; });
+}
+
+async function saveUserResult(tipId, patch){
+  if(!currentUser){
+    alert('Please log in first so your results save to your account.');
+    return;
+  }
+  const key = String(tipId);
+  const existing = userResultsByTipId[key];
+
+  const payload = {
+    user_id: currentUser.id,
+    tip_id: Number(tipId),
+    stake: Number.isFinite(patch.stake) ? patch.stake : (existing?.stake ?? 0),
+    result: patch.result ?? (existing?.result ?? 'pending')
+  };
+
+  // If user chose "delete", remove their row (resets to defaults)
+  if(payload.result === 'delete'){
+    const { error } = await client.from('user_results')
+      .delete()
+      .eq('user_id', currentUser.id)
+      .eq('tip_id', Number(tipId));
+    if(error) alert(error.message);
+    delete userResultsByTipId[key];
+    return;
+  }
+
+  if(existing?.id){
+    const { data, error } = await client
+      .from('user_results')
+      .update({ stake: payload.stake, result: payload.result })
+      .eq('id', existing.id)
+      .select('id, tip_id, stake, result')
+      .single();
+    if(error) alert(error.message);
+    else userResultsByTipId[key] = data;
+  }else{
+    const { data, error } = await client
+      .from('user_results')
+      .insert(payload)
+      .select('id, tip_id, stake, result')
+      .single();
+    if(error) alert(error.message);
+    else userResultsByTipId[key] = data;
+  }
+}
+
+
 const bankrollElem=document.getElementById("bankroll");
 const profitElem=document.getElementById("profit");
 const roiElem=document.getElementById("roi");
@@ -43,7 +188,6 @@ await client.from("bet_tracker").insert({
 match:row.match,
 market:row.market,
 odds:row.odds,
-match_date_date: row.bet_date,
 stake:10,
 result:"pending"
 });
@@ -81,141 +225,9 @@ document.addEventListener("change", (e)=>{
   }
 });
 
-
-// ===== Tracker Filters (Bet Results) =====
-let trackerAllRows = [];
-
-function _rowGameDateISO(row){
-  const raw = row.match_date_date || row.match_date || row.bet_date || row.created_at;
-  if(!raw) return "";
-  const d = new Date(raw);
-  if(isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0,10); // YYYY-MM-DD
-}
-
-function _applyTrackerFilters(rows){
-  const dateEl = document.getElementById("filterDate");
-  const marketEl = document.getElementById("filterMarket");
-  const dateVal = dateEl ? (dateEl.value || "") : "";
-  const marketVal = marketEl ? (marketEl.value || "").trim().toLowerCase() : "";
-
-  return (rows || []).filter(r=>{
-    // date filter
-    if(dateVal){
-      const iso = _rowGameDateISO(r);
-      if(iso !== dateVal) return false;
-    }
-    // market filter (matches market OR match text)
-    if(marketVal){
-      const m = (r.market || "").toLowerCase();
-      const match = (r.match || "").toLowerCase();
-      if(!m.includes(marketVal) && !match.includes(marketVal)) return false;
-    }
-    return true;
-  });
-}
-
-function _buildTrackerTableHTML(rows){
-  let html = `<table>
-    <tr>
-      <th>Date</th>
-      <th>Match</th>
-      <th>Stake</th>
-      <th>Result</th>
-      <th class="profit-col">Profit</th>
-    </tr>`;
-  (rows || []).forEach(row=>{
-    const stakeVal = row.stake ?? 0;
-    const res = row.result || "pending";
-    let profit = 0;
-    if(res === "won") profit = (row.profit != null ? row.profit : row.stake * (row.odds - 1));
-    if(res === "lost") profit = (row.profit != null ? row.profit : -row.stake);
-    if(res === "pending") profit = 0;
-
-    const profitClass = profit >= 0 ? "profit-win" : "profit-loss";
-    const profitText = (profit >= 0 ? `£${profit.toFixed(2)}` : `£${profit.toFixed(2)}`);
-
-    const dateLabel = fmtLabel(row.match_date_date || row.match_date || row.bet_date || row.created_at);
-
-    html += `<tr>
-      <td class="date-col">${dateLabel}</td>
-      <td>${row.match || ""}</td>
-      <td><input class="stake-input" type="number" value="${stakeVal}" data-id="${row.id}" data-field="stake"></td>
-      <td>
-        <select class="result-select result-${res}" data-id="${row.id}" data-field="result">
-          <option value="pending" ${res==="pending"?"selected":""}>pending</option>
-          <option value="won" ${res==="won"?"selected":""}>won</option>
-          <option value="lost" ${res==="lost"?"selected":""}>lost</option>
-        </select>
-      </td>
-      <td class="profit-col ${profitClass}">${profitText}</td>
-    </tr>`;
-  });
-  html += `</table>`;
-  return html;
-}
-
-function _renderFilteredTrackerTable(){
-  const tableEl = document.getElementById("trackerTable");
-  const countEl = document.getElementById("betCount");
-  if(!tableEl) return;
-
-  const filtered = _applyTrackerFilters(trackerAllRows);
-  tableEl.innerHTML = _buildTrackerTableHTML(filtered);
-  if(countEl) countEl.textContent = filtered.length;
-
-  // re-bind inline input/select listeners for edited rows
-  bindTrackerTableInputs();
-}
-
-let _filtersWired = false;
-function wireTrackerFilters(){
-  if(_filtersWired) return;
-  _filtersWired = true;
-
-  const dateEl = document.getElementById("filterDate");
-  const marketEl = document.getElementById("filterMarket");
-  const todayBtn = document.getElementById("todayToggle");
-  const clearBtn = document.getElementById("clearFilters");
-
-  if(dateEl) dateEl.addEventListener("change", _renderFilteredTrackerTable);
-  if(marketEl) marketEl.addEventListener("input", _renderFilteredTrackerTable);
-
-  if(todayBtn){
-    todayBtn.addEventListener("click", ()=>{
-      if(dateEl){
-        const today = new Date();
-        dateEl.value = today.toISOString().slice(0,10);
-      }
-      _renderFilteredTrackerTable();
-    });
-  }
-
-  if(clearBtn){
-    clearBtn.addEventListener("click", ()=>{
-      if(dateEl) dateEl.value = "";
-      if(marketEl) marketEl.value = "";
-      _renderFilteredTrackerTable();
-    });
-  }
-}
-
 let dailyChart;
 let monthlyChart;
 let marketChart;
-
-function fmtDayLabel(d){
-  if(!d) return "";
-  const dt = new Date(d);
-  if(Number.isNaN(dt.getTime())) return String(d);
-  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-}
-
-function isEndOfDay(index, labels){
-  if(!labels || !labels.length) return false;
-  if(index === labels.length - 1) return true;
-  return labels[index] !== labels[index + 1];
-}
 
 function renderDailyChart(history, labels){
 if(dailyChart) dailyChart.destroy();
@@ -231,141 +243,122 @@ fill:true,
 backgroundColor:"rgba(34,197,94,0.08)",
 borderColor:"#22c55e",
 borderWidth:2,
-	// Show dots ONLY on the last point of each day
-	pointRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 5 : 0,
-	pointHoverRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 7 : 0,
-	pointBackgroundColor:"#22c55e",
-	pointBorderWidth:0
+pointRadius:0
 }]
 },
-	options:{
-	  responsive:true,
-	  maintainAspectRatio:false,
-	  interaction:{ mode:"nearest", intersect:true },
-	  scales:{
-	    y:{ ticks:{ callback:(v)=> `£${v}` } },
-	    x:{
-	      ticks:{
-	        callback:function(value, index){
-	          const label = this.getLabelForValue(value);
-	          if(index === 0) return label;
-	          return label !== labels[index - 1] ? label : "";
-	        }
-	      }
-	    }
-	  },
-	  plugins:{
-	    legend:{display:false},
-	    tooltip:{
-	      enabled:true,
-	      callbacks:{
-	        label:(ctx)=> `£${Number(ctx.parsed.y).toFixed(2)}`
-	      }
-	    }
-	  }
-	}
+options:{responsive:true,
+        maintainAspectRatio:false,plugins:{legend:{display:false}}}
 });
 }
+
 
 async function loadTracker(){
-const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
-trackerAllRows = data || [];
-wireTrackerFilters();
+  const {data: tips, error} = await client
+    .from("bet_tracker")
+    .select("*")
+    .order("created_at",{ascending:true});
 
-let start=parseFloat(document.getElementById("startingBankroll").value);
-let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
+  if(error){
+    console.error(error);
+    return;
+  }
 
-	let html="<table><tr><th class='date-col'>Date</th><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
+  await loadUserResults();
 
-data.forEach(row=>{
-let p=0;
-if(row.result==="won"){p=row.stake*(row.odds-1);wins++;}
-if(row.result==="lost"){p=-row.stake;losses++;}
-profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
-bankroll=start+profit;history.push(bankroll);
+  const data = (tips||[]).map(t => {
+    const ur = userResultsByTipId[String(t.id)];
+    return {
+      ...t,
+      stake: Number(ur?.stake ?? 0),
+      result: (ur?.result ?? "pending")
+    };
+  });
 
-const gameDate = row.match_date_date || row.bet_date || row.created_at;
-html+=`<tr>
-<td class="date-col">${fmtDayLabel(gameDate)}</td><td>${row.match}</td>
-<td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
-<td>
-<select 
-class="result-select result-${row.result}" 
-onchange="updateResult('${row.id}',this.value)">
-<option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
-<option value="won" ${row.result==="won"?"selected":""}>won</option>
-<option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
-<option value="delete">🗑 delete</option>
-</select>
-</td>
-<td class="profit-col">
-<span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
-</td>
-</tr>`;
-});
+  let start=parseFloat(document.getElementById("startingBankroll").value);
+  let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
 
-html+="</table>";
-trackerTable.innerHTML=html;
+  let html="<table><tr><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
 
-bankrollElem.innerText=bankroll.toFixed(2);
-profitElem.innerText=profit.toFixed(2);
-roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
-winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
-const wonLostElem = document.getElementById("wonLost");
-if(wonLostElem){
-  wonLostElem.innerText = `${wins}-${losses}`;
-}
+  data.forEach(row=>{
+    let p=0;
+    if(row.result==="won"){p=row.stake*(row.odds-1);wins++;}
+    if(row.result==="lost"){p=-row.stake;losses++;}
+    profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
+    bankroll=start+profit;history.push(bankroll);
 
-const totalBets = data.length;
-const totalElem = document.getElementById("totalBets");
-if(totalElem) totalElem.innerText = totalBets;
-const totalStakedCard = document.getElementById("totalStakedCard");
-if(totalStakedCard){
-  totalStakedCard.innerText = totalStake.toFixed(2);
-}
+    html+=`<tr>
+      <td>${row.match}</td>
+      <td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
+      <td>
+        <select 
+          class="result-select result-${row.result}" 
+          onchange="updateResult('${row.id}',this.value)">
+          <option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
+          <option value="won" ${row.result==="won"?"selected":""}>won</option>
+          <option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
+          <option value="delete">🗑 delete</option>
+        </select>
+      </td>
+      <td class="profit-col">
+        <span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
+      </td>
+    </tr>`;
+  });
 
+  html+="</table>";
+  trackerTable.innerHTML=html;
 
-avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
+  bankrollElem.innerText=bankroll.toFixed(2);
+  profitElem.innerText=profit.toFixed(2);
+  roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
+  winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
+  winsElem.innerText=wins;
+  lossesElem.innerText=losses;
 
-profitCard.classList.remove("glow-green","glow-red");
-if(profit>0) profitCard.classList.add("glow-green");
-if(profit<0) profitCard.classList.add("glow-red");
+  const settledCount = wins + losses;
+  avgOddsElem.innerText=settledCount?(data.filter(r=>r.result==='won'||r.result==='lost').reduce((s,r)=>s+r.odds,0)/settledCount).toFixed(2):0;
 
+  profitCard.classList.remove("glow-green","glow-red");
+  if(profit>0) profitCard.classList.add("glow-green");
+  if(profit<0) profitCard.classList.add("glow-red");
 
-// Daily labels based on the *game* date when available
-const dailyLabels = data.map(r => fmtDayLabel(r.match_date_date || r.bet_date || r.created_at));
-renderDailyChart(history, dailyLabels);
+  // Daily labels as dates
+  const dailyLabels = data.map(r=>{
+    const d = new Date(r.created_at);
+    return d.toLocaleDateString('en-GB',{day:'2-digit', month:'short'});
+  });
+  renderDailyChart(history, dailyLabels);
 
-// ---- Monthly & Market analytics (tabs + mini summary) ----
-const countElem = document.getElementById("betCount");
-if(countElem) countElem.textContent = String(data.length);
+  // ---- Monthly & Market analytics (tabs + mini summary) ----
+  const countElem = document.getElementById("betCount");
+  if(countElem) countElem.textContent = String(data.length);
 
-// Monthly profit aggregation (ROI version)
-const monthMap = {};
-const monthStakeMap = {};
+  // Monthly profit aggregation (ROI version)
+  const monthMap = {};
+  const monthStakeMap = {};
 
-data.forEach(r=>{
-  const d = new Date(r.created_at);
-  const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
-  monthStakeMap[key] = (monthStakeMap[key]||0) + r.stake;
-});
+  data.forEach(r=>{
+    const d = new Date(r.created_at);
+    const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    monthMap[key] = (monthMap[key]||0) + rowProfit(r);
+    monthStakeMap[key] = (monthStakeMap[key]||0) + r.stake;
+  });
 
-const monthKeys = Object.keys(monthMap).sort();
+  const monthKeys = Object.keys(monthMap).sort();
 
-const monthLabels = monthKeys.map(k=>{
-  const [y,m]=k.split("-");
-  return new Date(parseInt(y), parseInt(m)-1, 1)
-    .toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
-});
+  const monthLabels = monthKeys.map(k=>{
+    const [y,m]=k.split("-");
+    return new Date(parseInt(y), parseInt(m)-1, 1)
+      .toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+  });
 
-const monthlyProfit = monthKeys.map(k=> monthMap[k]);
-const monthlyROI = monthKeys.map(k=>{
-  const stake = monthStakeMap[k] || 0;
-  return stake ? (monthMap[k] / stake) * 100 : 0;
-});
+  const monthlyProfit = monthKeys.map(k=> monthMap[k]);
+  const monthlyROI = monthKeys.map(k=>{
+    const stake = monthStakeMap[k] || 0;
+    return stake ? (monthMap[k] / stake) * 100 : 0;
+  });
 
-renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
+  renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
 
   let breakdownHTML = "<table><tr><th>Month</th><th>Profit</th><th>ROI</th></tr>";
   monthKeys.forEach((k,i)=>{
@@ -381,70 +374,70 @@ renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
   const tableEl = document.getElementById("monthlyTable");
   if(tableEl) tableEl.innerHTML = breakdownHTML;
 
-// Market profit aggregation
-const marketMap = {};
-const marketWL = {}; // {market:{wins,losses,pending,bets}}
-data.forEach(r=>{
-  const mk = (r.market && String(r.market).trim()) ? String(r.market).trim() : "Unknown";
-  marketMap[mk] = (marketMap[mk]||0) + rowProfit(r);
+  // Market profit aggregation
+  const marketMap = {};
+  const marketWL = {}; // {market:{wins,losses,pending,bets}}
+  data.forEach(r=>{
+    const mk = (r.market && String(r.market).trim()) ? String(r.market).trim() : "Unknown";
+    marketMap[mk] = (marketMap[mk]||0) + rowProfit(r);
 
-  if(!marketWL[mk]) marketWL[mk] = {wins:0,losses:0,pending:0,bets:0};
-  marketWL[mk].bets += 1;
-  const res = (r.result || "pending").toLowerCase();
-  if(res === "won") marketWL[mk].wins += 1;
-  else if(res === "lost") marketWL[mk].losses += 1;
-  else marketWL[mk].pending += 1;
-});
+    if(!marketWL[mk]) marketWL[mk] = {wins:0,losses:0,pending:0,bets:0};
+    marketWL[mk].bets += 1;
+    const res = (r.result || "pending").toLowerCase();
+    if(res === "won") marketWL[mk].wins += 1;
+    else if(res === "lost") marketWL[mk].losses += 1;
+    else marketWL[mk].pending += 1;
+  });
 
-// Build win% series (resolved only); show top 8 by bet count
-let entries = Object.entries(marketWL);
-entries.sort((a,b)=>(b[1].bets)-(a[1].bets));
-entries = entries.slice(0,8);
+  // Build win% series (resolved only); show top 8 by bet count
+  let entries = Object.entries(marketWL);
+  entries.sort((a,b)=>(b[1].bets)-(a[1].bets));
+  entries = entries.slice(0,8);
 
-const labels = entries.map(e=>e[0]);
-const totals = entries.map(e=>({ bets:e[1].bets, wins:e[1].wins, losses:e[1].losses }));
-const winPct = entries.map(e=>{
-  const resolved = e[1].wins + e[1].losses;
-  return resolved ? (e[1].wins / resolved) * 100 : 0;
-});
-renderMarketChart(labels, winPct, totals);
+  const labels = entries.map(e=>e[0]);
+  const totals = entries.map(e=>({ bets:e[1].bets, wins:e[1].wins, losses:e[1].losses }));
+  const winPct = entries.map(e=>{
+    const resolved = e[1].wins + e[1].losses;
+    return resolved ? (e[1].wins / resolved) * 100 : 0;
+  });
+  renderMarketChart(labels, winPct, totals);
 
-// Mini summary
-if(entries.length){
-  const bestM = [...Object.entries(marketMap)].sort((a,b)=>b[1]-a[1])[0];
-  const worstM = [...Object.entries(marketMap)].sort((a,b)=>a[1]-b[1])[0];
-  setMiniValue("bestMarket", bestM[0]+":", (bestM[1] >= 0 ? "+£" : "-£") + Math.abs(bestM[1]).toFixed(2));
-  setMiniValue("worstMarket", worstM[0]+":", (worstM[1] >= 0 ? "+£" : "-£") + Math.abs(worstM[1]).toFixed(2));
-}
-if(monthKeys.length){
-  const monthEntries = monthKeys.map(k=>[k, monthMap[k]]);
-  const bestMo = [...monthEntries].sort((a,b)=>b[1]-a[1])[0];
-  const worstMo = [...monthEntries].sort((a,b)=>a[1]-b[1])[0];
-  const fmtMonth = (k)=>{
-    const [y,m]=k.split("-");
-    return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
-  };
-  setMiniValue("bestMonth", fmtMonth(bestMo[0])+":", (bestMo[1] >= 0 ? "+£" : "-£") + Math.abs(bestMo[1]).toFixed(2));
-  setMiniValue("worstMonth", fmtMonth(worstMo[0])+":", (worstMo[1] >= 0 ? "+£" : "-£") + Math.abs(worstMo[1]).toFixed(2));
-}
-
-}
-
-
-async function updateStake(id,val){
-await client.from("bet_tracker").update({stake:parseFloat(val)}).eq("id",id);
-loadTracker();
+  // Mini summary
+  if(entries.length){
+    const bestM = [...Object.entries(marketMap)].sort((a,b)=>b[1]-a[1])[0];
+    const worstM = [...Object.entries(marketMap)].sort((a,b)=>a[1]-b[1])[0];
+    setMiniValue("bestMarket", bestM[0]+":", (bestM[1] >= 0 ? "+£" : "-£") + Math.abs(bestM[1]).toFixed(2));
+    setMiniValue("worstMarket", worstM[0]+":", (worstM[1] >= 0 ? "+£" : "-£") + Math.abs(worstM[1]).toFixed(2));
+  }
+  if(monthKeys.length){
+    const monthEntries = monthKeys.map(k=>[k, monthMap[k]]);
+    const bestMo = [...monthEntries].sort((a,b)=>b[1]-a[1])[0];
+    const worstMo = [...monthEntries].sort((a,b)=>a[1]-b[1])[0];
+    const fmtMonth = (k)=>{
+      const [y,m]=k.split("-");
+      return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+    };
+    setMiniValue("bestMonth", fmtMonth(bestMo[0])+":", (bestMo[1] >= 0 ? "+£" : "-£") + Math.abs(bestMo[1]).toFixed(2));
+    setMiniValue("worstMonth", fmtMonth(worstMo[0])+":", (worstMo[1] >= 0 ? "+£" : "-£") + Math.abs(worstMo[1]).toFixed(2));
+  }
 }
 
-async function updateResult(id,val){
-if(val==="delete"){
-if(!confirm("Delete this bet?")){loadTracker();return;}
-await client.from("bet_tracker").delete().eq("id",id);
-}else{
-await client.from("bet_tracker").update({result:val}).eq("id",id);
+
+
+
+async function updateStake(id,value){
+  const stake = parseFloat(value)||0;
+  await saveUserResult(id,{ stake });
+  await loadTracker();
 }
-loadTracker();
+
+
+
+async function updateResult(id,value){
+  await saveUserResult(id,{ result:value });
+  await loadTracker();
 }
+
 
 function exportCSV(){
 client.from("bet_tracker").select("*").then(({data})=>{
@@ -462,7 +455,7 @@ a.click();
 }
 
 loadBets();
-loadTracker();
+initAuth().then(()=>loadTracker());
 
 
 // Toggle with animation + memory
@@ -555,7 +548,7 @@ function renderMonthlyChart(profits, roi, labels){
           ctx.fillStyle="#fff";
           ctx.font="bold 13px system-ui";
           ctx.textAlign="center";
-          ctx.fillText("£"+val.toFixed(2), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
+          ctx.fillText("£"+val.toFixed(0), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
         });
       }
     }]
