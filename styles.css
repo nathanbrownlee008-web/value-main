@@ -187,21 +187,26 @@ th{text-align:left}
 .mini-value.negative{ color: #ef4444; }
 
 /* Chart tabs */
+/* ===== FIX MOBILE CHART TAB STRETCH ===== */
+
 .chart-tabs{
-  display: flex;
-  gap: 10px;
-  margin: 10px 0 10px 0;
+  display:flex;
+  gap:8px;
+  margin:10px 0;
+  width:100%;
 }
 
 .tab-btn{
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(51,65,85,0.55);
-  background: rgba(30,41,59,0.35);
-  color: #e2e8f0;
-  font-weight: 800;
-  letter-spacing: 0.2px;
+  flex:1;
+  min-width:0; /* THIS stops overflow */
+  padding:10px 8px;
+  border-radius:14px;
+  border:1px solid rgba(51,65,85,0.55);
+  background:rgba(30,41,59,0.35);
+  color:#e2e8f0;
+  font-weight:800;
+  font-size:14px;
+  letter-spacing:0.2px;
 }
 
 .tab-btn.active{
