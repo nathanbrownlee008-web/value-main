@@ -196,27 +196,28 @@ th{text-align:left}
 .mini-value.negative{ color: #ef4444; }
 
 /* Chart tabs */
-/* ===== CLEAN CHART TABS (FINAL FIX) ===== */
+/* ===== TRUE MOBILE FIT CHART TABS ===== */
 
 .chart-tabs{
   display:flex;
-  gap:10px;
+  justify-content:space-between;
+  gap:8px;
   margin:12px 0;
   width:100%;
 }
 
 .tab-btn{
-  flex:1;
+  flex:0 0 32%;
   min-width:0;
-  padding:12px 6px;
-  border-radius:20px;
+  padding:10px 4px;
+  border-radius:18px;
   border:1px solid rgba(51,65,85,0.55);
   background:rgba(30,41,59,0.35);
   color:#e2e8f0;
   font-weight:700;
-  font-size:15px;
+  font-size:14px;
   text-align:center;
-  height:48px;
+  white-space:nowrap;
 }
 
 .tab-btn.active{
