@@ -252,28 +252,18 @@ options:{responsive:true,
 }
 
 
-await loadUserResults();
-
-  const tipIds = Object.keys(userResultsByTipId).map(id => parseInt(id, 10));
-
-  // If user hasn’t added anything yet, show empty tracker
-  if (tipIds.length === 0) {
-    document.getElementById("trackerTable").innerHTML = "";
-    updateStats([]);
-    renderCharts([]);
-    return;
-  }
-
-  const { data: tips, error } = await client
+async function loadTracker(){
+  const {data: tips, error} = await client
     .from("bet_tracker")
     .select("*")
-    .in("id", tipIds)
-    .order("created_at", { ascending: true });
+    .order("created_at",{ascending:true});
 
-  if (error) {
+  if(error){
     console.error(error);
     return;
   }
+
+  await loadUserResults();
 
   const data = (tips||[]).map(t => {
     const ur = userResultsByTipId[String(t.id)];
@@ -736,3 +726,14 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
+
+// --- Export key handlers for inline buttons (mobile-safe) ---
+// index.html uses onclick="login()" / "signup()" / "logout()".
+// Exposing them on window avoids "button does nothing" when listeners fail.
+window.login = login;
+window.signup = signup;
+window.logout = logout;
+window.addToTracker = addToTracker;
+window.removeFromTracker = removeFromTracker;
+window.toggleInsights = toggleInsights;
+window.toggleMonthly = toggleMonthly;
