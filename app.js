@@ -317,6 +317,11 @@ lossesElem.innerText=losses;
 const totalBets = data.length;
 const totalElem = document.getElementById("totalBets");
 if(totalElem) totalElem.innerText = totalBets;
+const totalStakedEl = document.getElementById("totalStakedText");
+if(totalStakedEl){
+  totalStakedEl.innerText = ` • £${totalStake.toFixed(2)} staked`;
+}
+
 
 avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
 
