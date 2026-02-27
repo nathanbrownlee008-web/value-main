@@ -199,10 +199,11 @@ th{text-align:left}
 /* ===== TRUE MOBILE FIT CHART TABS ===== */
 
 .chart-tabs{
-  display:flex;
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center;
   justify-content:space-between;
   gap:8px;
-  margin:12px 0;
   width:100%;
 }
 
