@@ -418,3 +418,19 @@ th{text-align:left}
   opacity: 0.7;
   margin-top: 4px;
 }
+/* ===== HARD STOP HORIZONTAL STRETCH ===== */
+
+.chart-wrap,
+.chart-pane,
+canvas {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+canvas {
+  display: block;
+}
+
+body {
+  overflow-x: hidden;
+}
