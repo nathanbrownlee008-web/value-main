@@ -24,17 +24,51 @@ tabTracker.classList.toggle("active",!show);
 }
 
 async function loadBets(){
-const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
-betsGrid.innerHTML="";
-if(!data) return;
-data.forEach(row=>{
-betsGrid.innerHTML+=`
-<div class="card">
-<h3>${row.match}</h3>
-<p>${row.market} • ${row.bet_date}</p>
-<p>Odds: ${row.odds}</p>
-<button onclick='addToTracker(${JSON.stringify(row)})'>Add to Tracker</button>
-</div>`;
+  const {data} = await client
+    .from("value_bets")
+    .select("*")
+    .order("bet_date",{ascending:false});
+
+  betsGrid.innerHTML="";
+
+  if(!data || !data.length) return;
+
+  let html = `
+  <div class="value-table-wrap">
+  <table class="value-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Date</th>
+        <th>Match</th>
+        <th>Market</th>
+        <th>Odds</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+  `;
+
+  data.forEach((row,i)=>{
+    html += `
+      <tr>
+        <td class="rank">${i+1}</td>
+        <td>${row.bet_date ?? ""}</td>
+        <td>${row.match}</td>
+        <td>${row.market}</td>
+        <td>${row.odds}</td>
+        <td>
+          <button class="add-btn"
+            onclick='addToTracker(${JSON.stringify(row)})'>
+            Add
+          </button>
+        </td>
+      </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+
+  betsGrid.innerHTML = html;
 });
 }
 
