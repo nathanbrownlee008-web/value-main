@@ -1,382 +1,591 @@
+/* Top Daily Tips - Value Bets dashboard + per-user tracker (Supabase) */
 
+// --- Supabase ---
+const SUPABASE_URL = "https://krmmmutcejnzdfupexp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtybW1tdXRjZWpuemRmdXBleHAiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc0MDY3NDY4MSwiZXhwIjoyMDU2MjUwNjgxfQ.qwQiDD0u-cc1VcywYKB44Ye6Zm6xthSZmH9eDq8o2Vg";
+
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// --- State ---
+let currentUser = null;
+let valueBets = []; // raw from DB
+let filteredBets = []; // after filters
+let sortKey = "rank";
+let sortDir = "asc";
+let wide = false;
+
+// --- Helpers ---
 const $ = (id) => document.getElementById(id);
 
-const state = {
-  datasets: [],
-  current: null,
-  raw: [],
-  filtered: [],
-  columnsAll: [],
-  columns: [],
-  sortKey: null,
-  sortDir: "asc",
-  compact: true
-};
-
-function normalizeStr(v){ return (v ?? "").toString().toLowerCase(); }
-
-function parseDateOnly(s){
-  if(!s) return null;
-  // expects "YYYY-MM-DD HH:MM"
-  const t = String(s).replace(" ", "T");
-  const d = new Date(t + (t.length === 16 ? ":00" : "") + "Z");
-  if(Number.isNaN(+d)) return null;
-  return d;
-}
-
-function formatNum(v, digits=3){
-  if(v === null || v === undefined || v === "") return "";
+function toNum(v){
   const n = Number(v);
-  if(Number.isNaN(n)) return String(v);
-  return n.toFixed(digits).replace(/\.0+$/,"").replace(/(\.\d*[1-9])0+$/,"$1");
+  return Number.isFinite(n) ? n : null;
 }
 
-function setSelectOptions(sel, values, placeholder){
-  sel.innerHTML = "";
-  const opt0 = document.createElement("option");
-  opt0.value = "";
-  opt0.textContent = placeholder;
-  sel.appendChild(opt0);
-  [...values].sort((a,b)=>a.localeCompare(b)).forEach(v=>{
-    const o = document.createElement("option");
-    o.value = v;
-    o.textContent = v;
-    sel.appendChild(o);
-  });
+function asDateStr(v){
+  if(!v) return "";
+  // supports ISO string or date string
+  const d = new Date(v);
+  if(Number.isNaN(d.getTime())) return String(v);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function inferPrimaryCols(cols){
-  const want = [
-    "Rank","DateUTC (date)","League","Home","Away",
-    "P(Over2.5)","P(BTTS)","P(Over1.5)",
-    "Model xG Total","Pick"
-  ];
-  const chosen = [];
-  want.forEach(k=>{ if(cols.includes(k) && !chosen.includes(k)) chosen.push(k); });
-  if(chosen.length < 6){
-    chosen.push(...cols.slice(0, Math.min(10, cols.length)).filter(c=>!chosen.includes(c)));
+function asPrettyDateTime(v){
+  if(!v) return "";
+  const d = new Date(v);
+  if(Number.isNaN(d.getTime())) return String(v);
+  return d.toLocaleString();
+}
+
+function safeText(v){
+  return (v === null || v === undefined) ? "" : String(v);
+}
+
+function normalizeRow(row){
+  // Map common column names from Supabase to the UI keys.
+  // This makes it work even if your DB columns differ slightly.
+  const match = row.match ?? row.fixture ?? row.game ?? row.event ?? "";
+  const league = row.league ?? row.competition ?? "";
+  const market = row.market ?? row.bet_type ?? row.pick ?? "";
+  const odds = row.odds ?? row.bookmaker_odds ?? row.price ?? null;
+  const probability = row.probability ?? row.prob ?? row.p ?? row.p_over25 ?? null;
+  const betDate = row.bet_date ?? row.date ?? row.date_utc ?? row.dateUTC ?? row.kickoff ?? row.kickoff_utc ?? row.time ?? null;
+  return {
+    ...row,
+    __match: match,
+    __league: league,
+    __market: market,
+    __odds: odds,
+    __prob: probability,
+    __date: betDate,
+  };
+}
+
+function compare(a,b,dir){
+  if(a === b) return 0;
+  if(a === null || a === undefined) return dir === 'asc' ? 1 : -1;
+  if(b === null || b === undefined) return dir === 'asc' ? -1 : 1;
+  if(typeof a === 'number' && typeof b === 'number') return dir === 'asc' ? a-b : b-a;
+  return dir === 'asc' ? String(a).localeCompare(String(b)) : String(b).localeCompare(String(a));
+}
+
+function setAuthUI(){
+  const status = $("authStatus");
+  const btnLogout = $("btnLogout");
+  const btnLogin = $("btnLogin");
+  const btnSignup = $("btnSignup");
+  const email = $("email");
+  const pass = $("password");
+
+  if(currentUser){
+    status.textContent = `Logged in: ${currentUser.email}`;
+    btnLogout.style.display = "inline-block";
+    btnLogin.style.display = "none";
+    btnSignup.style.display = "none";
+    email.style.display = "none";
+    pass.style.display = "none";
+  }else{
+    status.textContent = "Not logged in";
+    btnLogout.style.display = "none";
+    btnLogin.style.display = "inline-block";
+    btnSignup.style.display = "inline-block";
+    email.style.display = "inline-block";
+    pass.style.display = "inline-block";
   }
-  return chosen.slice(0, 10);
 }
 
-function probColForDataset(){
-  if(!state.raw.length) return null;
-  const r0 = state.raw[0];
-  return ["P(Over2.5)","P(BTTS)","P(Over1.5)"].find(k => k in r0) || null;
+function showToast(msg){
+  alert(msg);
 }
 
-function buildTabs(){
-  const tabs = $("tabs");
-  tabs.innerHTML = "";
-  state.datasets.forEach(d=>{
-    const b = document.createElement("button");
-    b.className = "tab";
-    b.setAttribute("role", "tab");
-    b.setAttribute("aria-selected", state.current?.slug === d.slug ? "true" : "false");
-    b.textContent = d.name;
-    b.addEventListener("click", ()=> loadDataset(d.slug));
-    tabs.appendChild(b);
-  });
+// --- Tabs ---
+function showTab(which){
+  const bets = $("betsSection");
+  const tr = $("trackerSection");
+  const tabB = $("tabBets");
+  const tabT = $("tabTracker");
+  if(which === 'bets'){
+    bets.style.display = "block";
+    tr.style.display = "none";
+    tabB.classList.add('active');
+    tabT.classList.remove('active');
+  }else{
+    bets.style.display = "none";
+    tr.style.display = "block";
+    tabT.classList.add('active');
+    tabB.classList.remove('active');
+    loadTracker();
+  }
 }
 
-function buildHead(){
-  const thead = $("tbl").querySelector("thead");
-  thead.innerHTML = "";
-  const tr = document.createElement("tr");
-  state.columns.forEach(key=>{
-    const th = document.createElement("th");
-    const arrow = (state.sortKey === key) ? (state.sortDir === "asc" ? " ▲" : " ▼") : "";
-    th.textContent = key + arrow;
-    th.addEventListener("click", ()=>{
-      if(state.sortKey === key){
-        state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-      }else{
-        state.sortKey = key;
-        state.sortDir = "asc";
-      }
-      render();
-    });
-    tr.appendChild(th);
-  });
-  thead.appendChild(tr);
-}
+// --- Value Bets load/render ---
+async function loadValueBets(){
+  const { data, error } = await client
+    .from('value_bets')
+    .select('*');
 
-function sortData(rows){
-  const key = state.sortKey;
-  if(!key) return rows;
-  const dir = state.sortDir === "asc" ? 1 : -1;
+  if(error){
+    console.error(error);
+    showToast(`Value bets error: ${error.message}`);
+    return;
+  }
 
-  rows.sort((a,b)=>{
-    const av = a[key];
-    const bv = b[key];
+  valueBets = (data || []).map(normalizeRow);
 
-    if(String(key).toLowerCase().includes("date")){
-      const ad = parseDateOnly(av);
-      const bd = parseDateOnly(bv);
-      return dir * ((ad?.getTime() ?? 0) - (bd?.getTime() ?? 0));
+  // Add rank (by best probability/odds/value if you have it)
+  // Default: sort by probability desc if available, else by date asc.
+  const hasProb = valueBets.some(r => toNum(r.__prob) !== null);
+  const sortedForRank = [...valueBets].sort((a,b)=>{
+    if(hasProb){
+      return (toNum(b.__prob) ?? -1) - (toNum(a.__prob) ?? -1);
     }
-
-    const an = Number(av);
-    const bn = Number(bv);
-    if(Number.isFinite(an) && Number.isFinite(bn)) return dir * (an - bn);
-
-    return dir * String(av ?? "").localeCompare(String(bv ?? ""));
+    return new Date(a.__date || 0) - new Date(b.__date || 0);
   });
-  return rows;
+  const idToRank = new Map();
+  sortedForRank.forEach((r, i)=> idToRank.set(r.id, i+1));
+  valueBets = valueBets.map(r => ({...r, __rank: idToRank.get(r.id) ?? null }));
+
+  populateFilterOptions();
+  applyFilters();
+}
+
+function populateFilterOptions(){
+  const leagues = new Set();
+  const markets = new Set();
+  valueBets.forEach(r=>{
+    if(r.__league) leagues.add(r.__league);
+    if(r.__market) markets.add(r.__market);
+  });
+
+  const leagueSel = $("fLeague");
+  const marketSel = $("fMarket");
+
+  leagueSel.innerHTML = '<option value="">All</option>' + [...leagues].sort().map(v=>`<option>${escapeHtml(v)}</option>`).join('');
+  marketSel.innerHTML = '<option value="">All</option>' + [...markets].sort().map(v=>`<option>${escapeHtml(v)}</option>`).join('');
+}
+
+function escapeHtml(str){
+  return String(str)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#039;');
 }
 
 function applyFilters(){
-  const q = normalizeStr($("q").value);
-  const league = $("league").value;
-  const pick = $("pick").value;
-  const pmin = $("pmin").value ? Number($("pmin").value) : null;
-  const dfrom = $("dfrom").value ? new Date($("dfrom").value + "T00:00:00Z") : null;
-  const dto = $("dto").value ? new Date($("dto").value + "T23:59:59Z") : null;
+  const q = ($("fSearch").value || '').trim().toLowerCase();
+  const league = $("fLeague").value;
+  const market = $("fMarket").value;
+  const minProb = toNum($("fMinProb").value);
+  const dFrom = $("fDateFrom").value ? new Date($("fDateFrom").value) : null;
+  const dTo = $("fDateTo").value ? new Date($("fDateTo").value) : null;
 
-  const pCol = probColForDataset();
-  const dateKey = state.raw.length && (("DateUTC (date)" in state.raw[0]) ? "DateUTC (date)" : null);
-
-  const rows = state.raw.filter(r=>{
-    if(league && r.League !== league) return false;
-    if(pick && (r.Pick ?? "") !== pick) return false;
-    if(pCol && pmin !== null && typeof r[pCol] === "number" && r[pCol] < pmin) return false;
-
-    if((dfrom || dto) && dateKey){
-      const d = parseDateOnly(r[dateKey]);
-      if(!d) return false;
-      if(dfrom && d < dfrom) return false;
-      if(dto && d > dto) return false;
+  filteredBets = valueBets.filter(r=>{
+    if(league && r.__league !== league) return false;
+    if(market && r.__market !== market) return false;
+    if(minProb !== null){
+      const p = toNum(r.__prob);
+      if(p === null || p < minProb) return false;
     }
-
+    if(dFrom){
+      const d = new Date(r.__date);
+      if(!Number.isNaN(d.getTime()) && d < dFrom) return false;
+    }
+    if(dTo){
+      const d = new Date(r.__date);
+      if(!Number.isNaN(d.getTime()) && d > dTo) return false;
+    }
     if(q){
-      const hay = [r.League, r.Home, r.Away, r.Pick, r[dateKey]].map(normalizeStr).join(" ");
+      const hay = `${r.__match} ${r.__league} ${r.__market}`.toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
   });
 
-  state.filtered = sortData(rows);
+  sortAndRender();
 }
 
-function buildBody(){
-  const tbody = $("tbl").querySelector("tbody");
+function sortAndRender(){
+  const dir = sortDir;
+  const key = sortKey;
+
+  const getVal = (r)=>{
+    switch(key){
+      case 'rank': return r.__rank;
+      case 'bet_date': return new Date(r.__date || 0).getTime();
+      case 'league': return r.__league;
+      case 'match': return r.__match;
+      case 'market': return r.__market;
+      case 'odds': return toNum(r.__odds);
+      case 'probability': return toNum(r.__prob);
+      default: return r[key];
+    }
+  };
+
+  const rows = [...filteredBets].sort((a,b)=> compare(getVal(a), getVal(b), dir));
+  renderValueBets(rows);
+}
+
+function renderValueBets(rows){
+  const tbody = $("betsTbody");
   tbody.innerHTML = "";
-  state.filtered.forEach(r=>{
-    const tr = document.createElement("tr");
-    tr.addEventListener("click", ()=> openDetails(r));
-    state.columns.forEach(key=>{
-      const td = document.createElement("td");
-      const v = r[key];
-      const kl = String(key).toLowerCase();
-      if(kl.startsWith("p(") && typeof v === "number"){
-        td.innerHTML = `<span class="badge mono">${formatNum(v,3)}</span>`;
-      }else if(Number.isFinite(Number(v)) && v !== "" && v !== null && v !== undefined){
-        td.textContent = (typeof v === "number") ? formatNum(v,3) : formatNum(Number(v),3);
-        td.classList.add("mono");
-      }else{
-        td.textContent = (v ?? "").toString();
-      }
-      tr.appendChild(td);
+
+  $("rowsMeta").textContent = `${rows.length} of ${valueBets.length} rows`;
+
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${safeText(r.__rank ?? '')}</td>
+      <td>${escapeHtml(asDateStr(r.__date))}</td>
+      <td>${escapeHtml(safeText(r.__league))}</td>
+      <td>${escapeHtml(safeText(r.__match))}</td>
+      <td>${escapeHtml(safeText(r.__market))}</td>
+      <td class="num">${escapeHtml(safeText(r.__odds ?? ''))}</td>
+      <td class="num">${formatProbPill(r.__prob)}</td>
+      <td><button class="actionBtn" data-id="${r.id}">Add</button></td>
+    `;
+
+    tr.addEventListener('click', (e)=>{
+      // clicking button should not trigger row select
+      if(e.target && e.target.tagName === 'BUTTON') return;
+      showRowDetails(r);
     });
+
+    const btn = tr.querySelector('button');
+    btn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      addToTracker(r);
+    });
+
     tbody.appendChild(tr);
   });
 }
 
-function buildCards(){
-  const list = $("cardList");
-  list.innerHTML = "";
-  const rows = state.filtered;
-  if(!rows.length) return;
-
-  const pCol = probColForDataset();
-  const dateKey = ("DateUTC (date)" in rows[0]) ? "DateUTC (date)" : null;
-
-  const show = inferPrimaryCols(state.columnsAll);
-  rows.forEach(r=>{
-    const item = document.createElement("div");
-    item.className = "cardItem";
-    item.addEventListener("click", ()=> openDetails(r));
-
-    const top = document.createElement("div");
-    top.className = "cardTop";
-
-    const left = document.createElement("div");
-    const title = document.createElement("div");
-    title.className = "cardTitle";
-    title.textContent = (r.Home && r.Away) ? `${r.Home} vs ${r.Away}` : (r.League || "Row");
-    const sub = document.createElement("div");
-    sub.className = "cardSub";
-    const parts = [];
-    if(r.League) parts.push(r.League);
-    if(dateKey && r[dateKey]) parts.push(`${r[dateKey]} UTC`);
-    if(r.Pick) parts.push(r.Pick);
-    sub.textContent = parts.join(" • ");
-    left.appendChild(title);
-    left.appendChild(sub);
-
-    const right = document.createElement("div");
-    if(pCol && typeof r[pCol] === "number"){
-      right.innerHTML = `<span class="badge mono">${formatNum(r[pCol],3)}</span>`;
-    }
-
-    top.appendChild(left);
-    top.appendChild(right);
-
-    const grid = document.createElement("div");
-    grid.className = "cardGrid";
-    show.slice(0,6).forEach(k=>{
-      if(k === "Home" || k === "Away") return;
-      const kv = document.createElement("div");
-      const kk = document.createElement("div");
-      kk.className = "k";
-      kk.textContent = k;
-      const vv = document.createElement("div");
-      vv.className = "v";
-      const val = r[k];
-      vv.textContent = (typeof val === "number") ? formatNum(val,3) : (val ?? "").toString();
-      kv.appendChild(kk);
-      kv.appendChild(vv);
-      grid.appendChild(kv);
-    });
-
-    item.appendChild(top);
-    item.appendChild(grid);
-    list.appendChild(item);
-  });
+function formatProbPill(p){
+  const n = toNum(p);
+  if(n === null) return '';
+  const shown = n <= 1 ? n.toFixed(3) : n.toFixed(2);
+  return `<span class="pill">${shown}</span>`;
 }
 
-function openDetails(row){
-  $("d_title").textContent = (row.Home && row.Away) ? `${row.Home} vs ${row.Away}` : (state.current?.name ?? "Details");
-  $("d_sub").textContent = (row.League ? `${row.League} • ` : "") + (row["DateUTC (date)"] ? `${row["DateUTC (date)"]} (UTC)` : "");
+function showRowDetails(r){
+  const box = $("rowDetails");
+  box.style.display = "block";
+  const entries = Object.entries(r)
+    .filter(([k])=>!k.startsWith('__'))
+    .slice(0, 24)
+    .map(([k,v])=>`<div><b>${escapeHtml(k)}</b>: ${escapeHtml(safeText(v))}</div>`)
+    .join('');
 
-  const wrap = document.createElement("div");
-  wrap.className = "kv";
-  Object.keys(row).forEach(k=>{
-    const kk = document.createElement("div");
-    kk.className = "k";
-    kk.textContent = k;
-
-    const vv = document.createElement("div");
-    vv.className = "v";
-    const val = row[k];
-    const kl = String(k).toLowerCase();
-    if(kl.startsWith("p(") && typeof val === "number"){
-      vv.innerHTML = `<span class="badge mono">${formatNum(val,3)}</span>`;
-    }else if(Number.isFinite(Number(val)) && val !== "" && val !== null && val !== undefined){
-      vv.textContent = (typeof val === "number") ? formatNum(val,6) : formatNum(Number(val),6);
-      vv.classList.add("mono");
-    }else{
-      vv.textContent = (val ?? "").toString();
-    }
-
-    wrap.appendChild(kk);
-    wrap.appendChild(vv);
-  });
-
-  $("d_body").innerHTML = "";
-  $("d_body").appendChild(wrap);
-  $("details").showModal();
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div><b>${escapeHtml(r.__match || 'Details')}</b></div>
+      <button class="btn btn-secondary" id="closeDetails">Close</button>
+    </div>
+    <div style="margin-top:10px;display:grid;gap:6px">${entries}</div>
+  `;
+  $("closeDetails").onclick = ()=> box.style.display = "none";
 }
 
-function initFilters(){
-  const leagues = new Set(state.raw.map(r=>r.League).filter(Boolean));
-  const picks = new Set(state.raw.map(r=>r.Pick).filter(Boolean));
-  setSelectOptions($("league"), leagues, "All leagues");
-  setSelectOptions($("pick"), picks, "All picks");
-
-  $("league").closest(".control").style.display = leagues.size ? "" : "none";
-  $("pick").closest(".control").style.display = picks.size ? "" : "none";
-
-  const pCol = probColForDataset();
-  $("pminWrap").style.display = pCol ? "" : "none";
-  $("pminLabel").textContent = pCol ? `Min ${pCol}` : "Min probability";
-}
-
-async function loadDataset(slug){
-  const ds = state.datasets.find(d=>d.slug===slug) || state.datasets[0];
-  state.current = ds;
-  $("status").textContent = "Loading…";
-  buildTabs();
-
-  const res = await fetch(ds.file, {cache:"no-store"});
-  const json = await res.json();
-  state.raw = json.rows || [];
-  state.columnsAll = json.columns || (state.raw.length ? Object.keys(state.raw[0]) : []);
-  state.columns = inferPrimaryCols(state.columnsAll);
-  state.sortKey = state.columns[0] || null;
-  state.sortDir = "asc";
-  initFilters();
-  $("status").textContent = "Offline data (bundled).";
-  render();
-}
-
-function render(){
-  applyFilters();
-  buildHead();
-  buildBody();
-  buildCards();
-  $("count").textContent = `${state.filtered.length} of ${state.raw.length} rows • ${state.current?.name ?? ""}`;
-}
-
-function resetFilters(){
-  $("q").value = "";
-  $("league").value = "";
-  $("pick").value = "";
-  $("pmin").value = "";
-  $("dfrom").value = "";
-  $("dto").value = "";
-  state.sortKey = state.columns[0] || null;
-  state.sortDir = "asc";
-  render();
-}
-
-function setCompact(on){
-  state.compact = on;
-  document.body.classList.toggle("compact", on);
-  $("viewBtn").textContent = on ? "Wide" : "Compact";
-  render();
-}
-
-async function init(){
-  if("serviceWorker" in navigator){
-    try{ await navigator.serviceWorker.register("sw.js"); }catch(e){}
+// --- Tracker ---
+async function addToTracker(betRow){
+  if(!currentUser){
+    showToast('Please log in first.');
+    return;
   }
 
-  // install prompt
-  let deferredPrompt = null;
-  window.addEventListener("beforeinstallprompt", (e)=>{
-    e.preventDefault();
-    deferredPrompt = e;
-    $("installBtn").classList.remove("hidden");
-  });
-  $("installBtn").addEventListener("click", async ()=>{
-    if(!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    $("installBtn").classList.add("hidden");
-  });
+  // Insert into user_results as the per-user tracker
+  // tip_id links to value_bets.id
+  const payload = {
+    user_id: currentUser.id,
+    tip_id: betRow.id,
+    stake: 10,
+    result: 'pending'
+  };
 
-  const dsRes = await fetch("datasets.json", {cache:"no-store"});
-  state.datasets = await dsRes.json();
-  buildTabs();
+  const { error } = await client
+    .from('user_results')
+    .upsert(payload, { onConflict: 'user_id,tip_id' });
 
-  // listeners
-  ["q","league","pick","pmin","dfrom","dto"].forEach(id=>{
-    $(id).addEventListener(id === "q" ? "input" : "change", render);
-  });
-  $("resetBtn").addEventListener("click", resetFilters);
-  $("viewBtn").addEventListener("click", ()=> setCompact(!state.compact));
-  $("closeDlg").addEventListener("click", ()=> $("details").close());
-  $("details").addEventListener("click", (e)=>{
-    const rect = $("details").getBoundingClientRect();
-    const inDialog = rect.top <= e.clientY && e.clientY <= rect.bottom && rect.left <= e.clientX && e.clientX <= rect.right;
-    if(!inDialog) $("details").close();
-  });
+  if(error){
+    console.error(error);
+    showToast(`Add failed: ${error.message}`);
+    return;
+  }
 
-  // default compact on phones
-  setCompact(window.matchMedia("(max-width: 640px)").matches);
-
-  await loadDataset(state.datasets[0]?.slug);
+  showToast('Added to tracker');
 }
-init();
+
+async function loadTracker(){
+  const tbody = $("trackerTbody");
+  tbody.innerHTML = "";
+
+  if(!currentUser){
+    tbody.innerHTML = '<tr><td colspan="7" style="color:rgba(255,255,255,.55)">Log in to see your tracker.</td></tr>';
+    updateStats([]);
+    return;
+  }
+
+  const { data: results, error } = await client
+    .from('user_results')
+    .select('id, tip_id, stake, result, created_at')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  if(error){
+    console.error(error);
+    tbody.innerHTML = '<tr><td colspan="7">Error loading tracker.</td></tr>';
+    return;
+  }
+
+  const tipIds = (results || []).map(r=>r.tip_id);
+  if(tipIds.length === 0){
+    tbody.innerHTML = '<tr><td colspan="7" style="color:rgba(255,255,255,.55)">No bets yet. Add from Value Bets.</td></tr>';
+    updateStats([]);
+    return;
+  }
+
+  const { data: tips, error: tipsErr } = await client
+    .from('value_bets')
+    .select('*')
+    .in('id', tipIds);
+
+  if(tipsErr){
+    console.error(tipsErr);
+    tbody.innerHTML = '<tr><td colspan="7">Error loading bet details.</td></tr>';
+    return;
+  }
+
+  const tipsById = new Map((tips || []).map(t=>[t.id, normalizeRow(t)]));
+
+  const rows = (results || []).map(r=>{
+    const tip = tipsById.get(r.tip_id);
+    return {
+      ...r,
+      tip
+    };
+  }).filter(r => !!r.tip);
+
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    const odds = r.tip.__odds ?? '';
+    tr.innerHTML = `
+      <td>${escapeHtml(asDateStr(r.tip.__date))}</td>
+      <td>${escapeHtml(safeText(r.tip.__match))}</td>
+      <td>${escapeHtml(safeText(r.tip.__market))}</td>
+      <td class="num">${escapeHtml(safeText(odds))}</td>
+      <td class="num"><input data-id="${r.id}" class="stakeInput" value="${escapeHtml(String(r.stake ?? ''))}" /></td>
+      <td>
+        <select data-id="${r.id}" class="resultSelect">
+          ${['pending','won','lost','void'].map(v=>`<option value="${v}" ${r.result===v?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </td>
+      <td><button class="actionBtn" data-del="${r.id}">Remove</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Wire inputs
+  tbody.querySelectorAll('.stakeInput').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const id = inp.getAttribute('data-id');
+      const stake = toNum(inp.value);
+      if(stake === null){
+        showToast('Stake must be a number');
+        return;
+      }
+      const { error: upErr } = await client.from('user_results').update({stake}).eq('id', id);
+      if(upErr) showToast(upErr.message);
+      await loadTracker();
+    });
+  });
+
+  tbody.querySelectorAll('.resultSelect').forEach(sel=>{
+    sel.addEventListener('change', async ()=>{
+      const id = sel.getAttribute('data-id');
+      const result = sel.value;
+      const { error: upErr } = await client.from('user_results').update({result}).eq('id', id);
+      if(upErr) showToast(upErr.message);
+      await loadTracker();
+    });
+  });
+
+  tbody.querySelectorAll('button[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.getAttribute('data-del');
+      const { error: delErr } = await client.from('user_results').delete().eq('id', id);
+      if(delErr) showToast(delErr.message);
+      await loadTracker();
+    });
+  });
+
+  updateStats(rows);
+}
+
+function updateStats(trackerRows){
+  const start = toNum($("startingBankroll").value) ?? 0;
+  let profit = 0;
+  let staked = 0;
+  let wins = 0;
+  let losses = 0;
+  let oddsSum = 0;
+  let oddsCount = 0;
+
+  trackerRows.forEach(r=>{
+    const stake = toNum(r.stake) ?? 0;
+    const odds = toNum(r.tip?.__odds);
+    if(odds !== null){ oddsSum += odds; oddsCount += 1; }
+    staked += stake;
+
+    if(r.result === 'won'){
+      wins += 1;
+      if(odds !== null) profit += stake * (odds - 1);
+    }else if(r.result === 'lost'){
+      losses += 1;
+      profit -= stake;
+    }else if(r.result === 'void'){
+      // no change
+    }
+  });
+
+  const bankroll = start + profit;
+  const total = trackerRows.length;
+  const decided = wins + losses;
+  const winrate = decided > 0 ? (wins/decided)*100 : 0;
+  const roi = staked > 0 ? (profit / staked) * 100 : 0;
+  const avgOdds = oddsCount > 0 ? (oddsSum/oddsCount) : 0;
+
+  $("bankroll").textContent = `£${bankroll.toFixed(2)}`;
+  $("profit").textContent = `£${profit.toFixed(2)}`;
+  $("roi").textContent = `${roi.toFixed(0)}%`;
+  $("winrate").textContent = `${winrate.toFixed(0)}%`;
+  $("wins").textContent = String(wins);
+  $("losses").textContent = String(losses);
+  $("avgOdds").textContent = avgOdds ? avgOdds.toFixed(2) : '0';
+  $("totalBets").textContent = String(total);
+}
+
+function exportTrackerCSV(){
+  const rows = [];
+  const tbody = $("trackerTbody");
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const tds = tr.querySelectorAll('td');
+    if(tds.length < 6) return;
+    rows.push([
+      tds[0].innerText,
+      tds[1].innerText,
+      tds[2].innerText,
+      tds[3].innerText,
+      tr.querySelector('.stakeInput')?.value ?? '',
+      tr.querySelector('.resultSelect')?.value ?? '',
+    ]);
+  });
+
+  const header = ['date','match','market','odds','stake','result'];
+  const csv = [header, ...rows]
+    .map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(','))
+    .join('\n');
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tracker.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// --- Auth ---
+async function signup(){
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  if(!email || !password) return showToast('Enter email + password');
+  const { error } = await client.auth.signUp({ email, password });
+  if(error) showToast(error.message);
+  else showToast('Sign up successful. Check your email to confirm if required.');
+}
+
+async function login(){
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  if(!email || !password) return showToast('Enter email + password');
+  const { error } = await client.auth.signInWithPassword({ email, password });
+  if(error) showToast(error.message);
+}
+
+async function logout(){
+  const { error } = await client.auth.signOut();
+  if(error) showToast(error.message);
+}
+
+async function initAuth(){
+  const { data } = await client.auth.getSession();
+  currentUser = data.session?.user ?? null;
+  setAuthUI();
+
+  client.auth.onAuthStateChange((_event, session)=>{
+    currentUser = session?.user ?? null;
+    setAuthUI();
+    // refresh tracker when auth changes
+    if($("trackerSection").style.display !== 'none') loadTracker();
+  });
+}
+
+// --- Wire UI ---
+function wireUI(){
+  $("tabBets").onclick = ()=>showTab('bets');
+  $("tabTracker").onclick = ()=>showTab('tracker');
+
+  $("btnSignup").onclick = signup;
+  $("btnLogin").onclick = login;
+  $("btnLogout").onclick = logout;
+
+  ["fSearch","fLeague","fMarket","fMinProb","fDateFrom","fDateTo"].forEach(id=>{
+    $(id).addEventListener('input', applyFilters);
+    $(id).addEventListener('change', applyFilters);
+  });
+
+  $("resetFilters").onclick = ()=>{
+    $("fSearch").value = '';
+    $("fLeague").value = '';
+    $("fMarket").value = '';
+    $("fMinProb").value = '';
+    $("fDateFrom").value = '';
+    $("fDateTo").value = '';
+    applyFilters();
+  };
+
+  $("toggleWide").onclick = ()=>{
+    wide = !wide;
+    document.body.classList.toggle('wide', wide);
+  };
+
+  // Sort headers
+  document.querySelectorAll('#betsTable thead th[data-key]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const k = th.getAttribute('data-key');
+      if(sortKey === k){
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      }else{
+        sortKey = k;
+        sortDir = (k === 'rank') ? 'asc' : 'asc';
+      }
+      sortAndRender();
+    });
+  });
+
+  $("startingBankroll").addEventListener('change', ()=> loadTracker());
+  $("exportCSV").onclick = exportTrackerCSV;
+}
+
+// --- Boot ---
+(async function main(){
+  wireUI();
+  await initAuth();
+  await loadValueBets();
+})();
