@@ -10,21 +10,31 @@
 </head>
 <body>
 
+<!-- AUTH MODAL (Login Required) -->
+<div id="authModal" class="auth-modal" style="display:none;">
+  <div class="auth-box">
+    <h2>Login to Continue</h2>
+    <input id="authEmail" type="email" placeholder="Email" />
+    <input id="authPassword" type="password" placeholder="Password" />
+    <div class="auth-actions">
+      <button type="button" onclick="login()">Log in</button>
+      <button type="button" onclick="signup()">Sign up</button>
+    </div>
+    <p class="auth-hint">(If email confirmation is enabled, confirm once after signup.)</p>
+  </div>
+</div>
+<div class="auth-mini">
+  <span id="authWho"></span>
+  <button id="authLogoutBtn" type="button" onclick="logout()" style="display:none;">Logout</button>
+</div>
+
+
 <header class="main-header">
 <h1 class="logo-3d">Top Daily Tips</h1>
 <div class="tabs">
 <button id="tabBets" class="active">Value Bets</button>
 <button id="tabTracker">Tracker</button>
 </div>
-
-  <div class="auth-bar">
-    <span id="authStatus" class="auth-status">Not logged in</span>
-    <input id="authEmail" type="email" placeholder="email" autocomplete="email"/>
-    <input id="authPassword" type="password" placeholder="password" autocomplete="current-password"/>
-    <button id="loginBtn" type="button" onclick="login()">Log in</button>
-    <button id="signupBtn" type="button" onclick="signup()">Sign up</button>
-    <button id="logoutBtn" type="button" onclick="logout()" style="display:none;">Log out</button>
-  </div>
 </header>
 
 <section id="betsSection">
@@ -110,7 +120,14 @@ Total Bets<br>
     <span id="trackerArrow">▼</span>
   </div>
   <div id="trackerWrapper" class="collapsed">
-    <div id="trackerTable"></div>
+    <div class="tracker-filters">
+    <input type="date" id="filterDate">
+    <input type="text" id="filterMarket" placeholder="Market">
+    <button id="todayToggle">Today</button>
+    <button id="clearFilters">Clear</button>
+  </div>
+
+  <div id="trackerTable"></div>
   </div>
 </div>
 
