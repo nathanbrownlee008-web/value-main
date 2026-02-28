@@ -1,7 +1,7 @@
 // Top Daily Tips (static) + Supabase Auth + RLS-friendly tracker
 // IMPORTANT: Paste your own values below (keep the quotes)
-const SUPABASE_URL = "https://krmmmutcejnzdfupexpv.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
+const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
