@@ -545,3 +545,22 @@ th{text-align:left}
   .bet-meta{ font-size: 12px; }
 }
 
+
+/* ===== Value Bets: High Value glow (manual flag) ===== */
+/* Add a boolean column: value_bets.high_value = true for featured bets */
+.bet-card--hv{
+  border-color: rgba(34,197,94,0.38);
+  box-shadow:
+    0 0 14px rgba(34,197,94,0.22),
+    0 12px 28px rgba(0,0,0,0.30);
+}
+
+.bet-card--hv::before{
+  opacity: 1;
+}
+
+.bet-card--hv .odds-badge{
+  background: rgba(34,197,94,0.14);
+  border-color: rgba(34,197,94,0.40);
+}
+

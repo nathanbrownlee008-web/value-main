@@ -29,7 +29,7 @@ betsGrid.innerHTML="";
 if(!data) return;
 data.forEach(row=>{
 betsGrid.innerHTML+=`
-<div class="card bet-card">
+<div class="card bet-card ${row.high_value ? 'bet-card--hv' : ''}">
   <h3 class="bet-title">${row.match}</h3>
   <div class="bet-meta">
     <span class="bet-market">${row.market}</span>
