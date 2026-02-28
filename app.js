@@ -1,4 +1,32 @@
 
+// ===== Global error catcher (mobile) =====
+(function(){
+  function showFatal(msg){
+    try{
+      var el = document.getElementById("fatalError");
+      if(el){
+        el.style.display = "block";
+        el.innerHTML = "<b style='color:#fff'>JS Error</b><br><span style='color:#fecaca'>" + msg + "</span>";
+      }
+    }catch(e){}
+  }
+  window.addEventListener("error", function(e){
+    showFatal((e.message || "Unknown error") + (e.filename ? ("<br><span style=opacity:.75>" + e.filename + ":" + e.lineno + "</span>") : ""));
+  });
+  window.addEventListener("unhandledrejection", function(e){
+    var r = e.reason;
+    showFatal((r && (r.message||r.toString())) || "Unhandled promise rejection");
+  });
+
+  document.addEventListener("DOMContentLoaded", function(){
+    var ks = document.getElementById("keySetup");
+    if(ks && !ks.innerHTML.trim()){
+      ks.innerHTML = "<b>Booting…</b><br><span style='opacity:.75'>If you see this, app.js is running.</span>";
+    }
+  });
+})();
+
+
 // Safety check: ensure Supabase loaded
 if (typeof window.supabase === "undefined") {
   }
