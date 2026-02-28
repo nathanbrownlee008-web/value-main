@@ -353,3 +353,37 @@ th{text-align:left}
   padding:6px 10px;
   font-size:12px;
 }
+.bets-table-wrapper{
+  margin-top:20px;
+  overflow-x:auto;
+}
+
+#betsTable{
+  width:100%;
+  border-collapse:collapse;
+  background:rgba(255,255,255,0.05);
+  border-radius:14px;
+  overflow:hidden;
+}
+
+#betsTable th{
+  padding:12px;
+  text-align:left;
+  font-weight:600;
+  color:#cfe8ff;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+}
+
+#betsTable td{
+  padding:12px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+.add-btn{
+  background:#22c55e;
+  border:none;
+  color:white;
+  padding:6px 10px;
+  border-radius:8px;
+  cursor:pointer;
+}
