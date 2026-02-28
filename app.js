@@ -1,30 +1,4 @@
 
-// ===== Global error catcher (mobile) =====
-(function(){
-  function showFatal(msg){
-    try{
-      var el = document.getElementById("fatalError");
-      if(el){
-        el.style.display = "block";
-        el.innerHTML = "<b style='color:#fff'>JS Error</b><br><span style='color:#fecaca'>" + msg + "</span>";
-      }
-    }catch(e){}
-  }
-  window.addEventListener("error", function(e){
-    showFatal((e.message || "Unknown error") + (e.filename ? ("<br><span style=opacity:.75>" + e.filename + ":" + e.lineno + "</span>") : ""));
-  });
-  window.addEventListener("unhandledrejection", function(e){
-    var r = e.reason;
-    showFatal((r && (r.message||r.toString())) || "Unhandled promise rejection");
-  });
-
-  document.addEventListener("DOMContentLoaded", function(){
-    var ks = document.getElementById("keySetup");
-    if(ks && !ks.innerHTML.trim()){
-      ks.innerHTML = "<b>Booting…</b><br><span style='opacity:.75'>If you see this, app.js is running.</span>";
-    }
-  });
-})();
 
 
 // Safety check: ensure Supabase loaded
@@ -34,6 +8,65 @@ if (typeof window.supabase === "undefined") {
 
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
 const SUPABASE_KEY = "";
+
+
+
+// ===== Simple on-page status + key setup (no console needed) =====
+function setBetsStatus(html){
+  const el = document.getElementById("betsStatus");
+  if(el) el.innerHTML = html;
+}
+
+function showKeySetup(messageHtml){
+  const box = document.getElementById("keySetup");
+  if(!box) return;
+
+  const currentUrl = (typeof SUPABASE_URL !== "undefined" && SUPABASE_URL) ? SUPABASE_URL : "";
+  const saved = (localStorage.getItem("supabase_anon_key") || "").trim();
+
+  box.style.display = "block";
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <h4 style="margin:0;">Connect Supabase</h4>
+      <button id="clearAnonKeyBtn" style="padding:7px 10px;border-radius:12px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28);font-weight:900">Clear</button>
+    </div>
+    <div class="muted" style="margin-top:6px">Project URL: <b>${currentUrl || "set in code"}</b></div>
+    <div class="muted" style="margin-top:6px">Paste your <b>anon public key</b> (starts <b>eyJ</b>) from Supabase → Project Settings → API.</div>
+    <input id="anonKeyInput" placeholder="eyJ..." autocomplete="off" style="margin-top:10px" />
+    <div class="row">
+      <button id="saveAnonKeyBtn">Save key</button>
+    </div>
+    ${messageHtml ? `<div class="muted" style="margin-top:8px">${messageHtml}</div>` : ""}
+    ${saved ? `<div class="muted" style="margin-top:6px">Saved key detected ✅</div>` : ""}
+  `;
+
+  document.getElementById("saveAnonKeyBtn")?.addEventListener("click", ()=>{
+    const v = (document.getElementById("anonKeyInput")?.value || "").trim();
+    if(!v){
+      setBetsStatus("<span class='bad'>Missing key</span><br>Please paste the anon public key.");
+      return;
+    }
+    if(v.startsWith("sb_")){
+      setBetsStatus("<span class='bad'>Wrong key</span><br>Don’t use sb_* keys. Use the anon public key (starts eyJ).");
+      return;
+    }
+    localStorage.setItem("supabase_anon_key", v);
+    location.reload();
+  });
+
+  document.getElementById("clearAnonKeyBtn")?.addEventListener("click", ()=>{
+    localStorage.removeItem("supabase_anon_key");
+    location.reload();
+  });
+}
+
+window.addEventListener("error", function(e){
+  showKeySetup("JS error: " + (e.message || "Unknown"));
+});
+window.addEventListener("unhandledrejection", function(e){
+  const r = e.reason;
+  showKeySetup("Request error: " + ((r && (r.message||r.toString())) || "Unknown"));
+});
 
 function setBetsStatus(html){
   const el = document.getElementById("betsStatus");
@@ -78,20 +111,31 @@ function getAnonKey(){
   return v ? v.trim() : "";
 }
 
+function getAnonKey(){
+  const v = localStorage.getItem("supabase_anon_key");
+  return v ? v.trim() : "";
+}
+
 function makeClient(){
-  if (typeof window.supabase === "undefined") return null;
+  if (typeof window.supabase === "undefined") {
+    showKeySetup("Supabase library not loaded. If you’re on a restrictive network, try mobile data or a different browser.");
+    setBetsStatus("<span class='bad'>Supabase library not loaded</span>");
+    return null;
+  }
+
   const key = getAnonKey();
   if(!key){
     showKeySetup();
-    setBetsStatus('<span class="bad">Not connected</span><br>Paste anon key above to load bets.');
+    setBetsStatus("<span class='bad'>Not connected</span><br>Paste anon public key above to load bets.");
     return null;
   }
-  // quick sanity: warn if they pasted sb_* key
+
   if(key.startsWith("sb_")){
     showKeySetup();
-    setBetsStatus('<span class="bad">Wrong key</span><br>You pasted an <b>sb_*</b> key. Use the <b>anon public key</b> (starts <b>eyJ</b>).');
+    setBetsStatus("<span class='bad'>Wrong key</span><br>Use anon public key (starts eyJ).");
     return null;
   }
+
   return supabase.createClient(SUPABASE_URL, key, {
     global: {
       fetch: (input, init = {}) => {
@@ -989,4 +1033,3 @@ document.addEventListener("DOMContentLoaded", function(){
   if(!client){ return; }
   loadBets();
 });
-
