@@ -1,6 +1,6 @@
 
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
-const SUPABASE_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtybW1tdXRjZWpuemRmdXBleHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTAxMTksImV4cCI6MjA4NzI4NjExOX0.SlEqBr6yZkSEUZo2-XG-7-H0qHpKjQDL7VtN509GzDQ";
 
 // ===== Supabase client =====
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
