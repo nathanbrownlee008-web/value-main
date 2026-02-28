@@ -4,7 +4,6 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Top Daily Tips</title>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="styles.css"/>
 </head>
@@ -12,7 +11,7 @@
 
 <header class="main-header">
 <h1 class="logo-3d">Top Daily Tips</h1>
-<div class="build-tag">KEYSETUPFIX-164150</div>
+<div class="build-tag">SUPAFIX-164720</div>
 <div class="tabs">
 <button id="tabBets" class="active">Value Bets</button>
 <button id="tabTracker">Tracker</button>
@@ -20,7 +19,7 @@
 </header>
 
 <section id="betsSection">
-  <div id="keySetup" class="key-setup" style="display:none"></div>
+  <div id="keySetup" class="key-setup"></div>
   <div id="betsStatus" class="bets-status">Loading bets…</div>
   <div class="bets-toolbar">
     <div class="bets-toolbar__left">
@@ -104,6 +103,7 @@
 
 </section>
 
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 </body>
 </html>

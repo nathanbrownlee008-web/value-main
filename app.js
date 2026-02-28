@@ -956,12 +956,9 @@ if(startingInput){
 
 
 document.addEventListener("DOMContentLoaded", function(){
-  // Create client only after DOM is ready so we can render status + key UI reliably
+  showKeySetup();
   client = makeClient();
-  if(!client){
-    // makeClient() will show the key UI + status message
-    return;
-  }
+  if(!client){ return; }
   loadBets();
 });
 
