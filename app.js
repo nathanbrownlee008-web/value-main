@@ -23,24 +23,123 @@ tabBets.classList.toggle("active",show);
 tabTracker.classList.toggle("active",!show);
 }
 
-async function loadBets(){
-const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
-betsGrid.innerHTML="";
-if(!data) return;
-data.forEach(row=>{
-betsGrid.innerHTML+=`
+let betsAllRows = [];
+
+function _num(v){
+  if(v == null) return NaN;
+  if(typeof v === "number") return v;
+  // handle "12.3%", "12,3", etc.
+  const s = String(v).replace("%","").replace(",","").trim();
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function _pickPct(row, keys){
+  for(const k of keys){
+    if(row && row[k] != null && row[k] !== "") return _num(row[k]);
+  }
+  return NaN;
+}
+
+// Try a few possible column names so it works even if your DB column differs
+function rowValuePct(row){
+  return _pickPct(row, ["value_pct","value_percent","value_percentage","value","edge_pct","edge_percent","edge"]);
+}
+function rowProbPct(row){
+  return _pickPct(row, ["probability_pct","probability_percent","probability_percentage","probability","prob_pct","prob"]);
+}
+
+function renderBets(rows){
+  betsGrid.innerHTML = "";
+  (rows || []).forEach(row=>{
+    const v = rowValuePct(row);
+    const p = rowProbPct(row);
+
+    const vText = Number.isFinite(v) ? `${v.toFixed(1)}%` : "—";
+    const pText = Number.isFinite(p) ? `${p.toFixed(1)}%` : "—";
+
+    betsGrid.innerHTML += `
 <div class="card bet-card ${row.high_value ? 'bet-card--hv' : ''}">
   <h3 class="bet-title">${row.match}</h3>
   <div class="bet-meta">
     <span class="bet-market">${row.market}</span>
     <span class="bet-date">${row.bet_date}</span>
   </div>
+
+  <div class="bet-stats">
+    <span class="stat-chip"><span class="stat-chip__k">Value</span><span class="stat-chip__v">${vText}</span></span>
+    <span class="stat-chip"><span class="stat-chip__k">Prob</span><span class="stat-chip__v">${pText}</span></span>
+  </div>
+
   <div class="bet-footer">
     <span class="odds-badge">Odds <strong>${row.odds}</strong></span>
     <button class="bet-btn" onclick='addToTracker(${JSON.stringify(row)})'>Add</button>
   </div>
 </div>`;
+  });
+}
+
+function applyBetsSort(){
+  const sel = document.getElementById("betsSort");
+  const mode = sel ? sel.value : "date_desc";
+
+  const rows = [...(betsAllRows || [])];
+
+  const byDate = (a,b)=>{
+    const da = new Date(a.bet_date || a.created_at || 0).getTime();
+    const db = new Date(b.bet_date || b.created_at || 0).getTime();
+    return da - db;
+  };
+  const byOdds = (a,b)=> (_num(a.odds) - _num(b.odds));
+  const byValue = (a,b)=> (rowValuePct(a) - rowValuePct(b));
+  const byProb  = (a,b)=> (rowProbPct(a) - rowProbPct(b));
+
+  // helper to push NaNs to the bottom always
+  const nanLast = (cmp)=>{
+    return (a,b)=>{
+      const av = cmp === byDate ? new Date(a.bet_date || a.created_at || 0).getTime()
+              : cmp === byOdds ? _num(a.odds)
+              : cmp === byValue ? rowValuePct(a)
+              : rowProbPct(a);
+      const bv = cmp === byDate ? new Date(b.bet_date || b.created_at || 0).getTime()
+              : cmp === byOdds ? _num(b.odds)
+              : cmp === byValue ? rowValuePct(b)
+              : rowProbPct(b);
+      const aNaN = !Number.isFinite(av);
+      const bNaN = !Number.isFinite(bv);
+      if(aNaN && bNaN) return 0;
+      if(aNaN) return 1;
+      if(bNaN) return -1;
+      return cmp(a,b);
+    };
+  };
+
+  if(mode === "date_desc") rows.sort((a,b)=> byDate(b,a));
+  else if(mode === "date_asc") rows.sort(byDate);
+  else if(mode === "odds_desc") rows.sort((a,b)=> nanLast(byOdds)(b,a));
+  else if(mode === "odds_asc") rows.sort(nanLast(byOdds));
+  else if(mode === "value_desc") rows.sort((a,b)=> nanLast(byValue)(b,a));
+  else if(mode === "value_asc") rows.sort(nanLast(byValue));
+  else if(mode === "prob_desc") rows.sort((a,b)=> nanLast(byProb)(b,a));
+  else if(mode === "prob_asc") rows.sort(nanLast(byProb));
+  else rows.sort((a,b)=> byDate(b,a));
+
+  renderBets(rows);
+}
+
+async function loadBets(){
+  const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
+  betsAllRows = data || [];
+  applyBetsSort();
+}
+
+// wire sort dropdown
+document.addEventListener("change", (e)=>{
+  if(e.target && e.target.id === "betsSort"){
+    applyBetsSort();
+  }
 });
+);
 }
 
 async function addToTracker(row){
