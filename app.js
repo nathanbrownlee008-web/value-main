@@ -25,10 +25,10 @@ tabTracker.classList.toggle("active",!show);
 
 async function loadBets() {
 
-  const { data, error } = await client
-    .from("value_bets")
-    .select("*")
-    .order("bet_date", { ascending: true });
+const { data, error } = await client
+  .from("value_bets")
+  .select("id, created_at, match, market, odds, bet_date")
+  .order("created_at", { ascending: false });
 
   console.log("DATA:", data);
   console.log("ERROR:", error);
