@@ -1,461 +1,743 @@
-// Top Daily Tips (static) + Supabase Auth + RLS-friendly tracker
-// IMPORTANT: Paste your own values below (keep the quotes)
-const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
+const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
+const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-// ----------------------
-// Elements
-// ----------------------
-const el = (id) => document.getElementById(id);
+const bankrollElem=document.getElementById("bankroll");
+const profitElem=document.getElementById("profit");
+const roiElem=document.getElementById("roi");
+const winrateElem=document.getElementById("winrate");
+const winsElem=document.getElementById("wins");
+const lossesElem=document.getElementById("losses");
+const avgOddsElem=document.getElementById("avgOdds");
+const profitCard=document.getElementById("profitCard");
 
-const betsContainer = el("betsContainer") || el("betsGrid");
-const betsStatus = el("betsStatus");
-const tabBtns = Array.from(document.querySelectorAll(".tab-btn"));
-const sortSelect = el("sortSelect") || el("betsSort");
+tabBets.onclick=()=>switchTab(true);
+tabTracker.onclick=()=>switchTab(false);
 
-const authBtn = el("authBtn");
-const authModal = el("authModal");
-const authBackdrop = el("authBackdrop");
-const authClose = el("authClose");
-const authTitle = el("authTitle");
-const authHint = el("authHint");
-const authEmail = el("authEmail");
-const authPass = el("authPass");
-const authSubmit = el("authSubmit");
-const authToggle = el("authToggle");
-const authMsg = el("authMsg");
-
-const totalProfitEl = el("totalProfit") || el("profit");
-const totalStakeEl = el("totalStake") || el("totalStakedCard");
-const totalBetsEl = el("totalBets");
-const betCountEl = el("betCount");
-const trackerWrapper = el("trackerWrapper");
-const trackerArrow = el("trackerArrow");
-const trackerTable = el("trackerTable");
-
-const monthlyWrapper = el("monthlyWrapper");
-const monthlyArrow = el("monthlyArrow");
-const monthlyTable = el("monthlyTable");
-
-// ----------------------
-// State
-// ----------------------
-let authMode = "signin"; // signin | signup
-let currentUser = null;
-let currentTab = "value"; // value | tracker
-let currentSort = "date_desc";
-
-// ----------------------
-// Modal helpers
-// ----------------------
-function openAuthModal() {
-  authMsg.textContent = "";
-  authEmail.value = authEmail.value || "";
-  authPass.value = "";
-  authModal.style.display = "block";
-  authModal.setAttribute("aria-hidden", "false");
+function switchTab(show){
+  initChartTabs();
+betsSection.style.display=show?"block":"none";
+trackerSection.style.display=show?"none":"block";
+tabBets.classList.toggle("active",show);
+tabTracker.classList.toggle("active",!show);
 }
 
-function closeAuthModal() {
-  authModal.style.display = "none";
-  authModal.setAttribute("aria-hidden", "true");
-  authMsg.textContent = "";
+
+async function loadBets(){
+  try{
+    const { data, error } = await client.from("value_bets").select("*");
+    if(error) throw error;
+
+    allRows = data || [];
+    applySort();
+    render();
+  }catch(err){
+    console.error("Load bets error:", err);
+    // keep UI helpful
+    betsGrid.innerHTML = '<div class="card">Could not load bets. Check Supabase URL/key and RLS SELECT policy.</div>';
+  }
 }
 
-function setAuthMode(mode) {
-  authMode = mode;
-  const isSignIn = mode === "signin";
-  authTitle.textContent = isSignIn ? "Log in" : "Create account";
-  authSubmit.textContent = isSignIn ? "Log in" : "Sign up";
-  authToggle.textContent = isSignIn ? "Create account" : "I already have an account";
-  authHint.textContent = isSignIn
-    ? "Use email + password."
-    : "Create an account with email + password.";
-  authMsg.textContent = "";
-}
 
-// ----------------------
-// Auth
-// ----------------------
-async function refreshSession() {
-  const { data } = await supabase.auth.getSession();
-  currentUser = data.session?.user || null;
-  updateAuthUI();
-}
-
-function updateAuthUI() {
-  if (!authBtn) return;
-  authBtn.textContent = currentUser ? "Log out" : "Log in";
-}
-
-async function handleAuthButton() {
-  if (!currentUser) {
+async function addToTracker(bet){
+  // Tracker requires login (so every user only writes their own rows)
+  if(!currentUser){
     setAuthMode("signin");
     openAuthModal();
     return;
   }
-  await supabase.auth.signOut();
-  await refreshSession();
-  // Clear tracker UI
-  trackerTable.innerHTML = "";
-  setStats({ totalProfit: 0, totalStake: 0, totalBets: 0 });
-}
 
-async function submitAuth() {
-  const email = authEmail.value.trim();
-  const password = authPass.value;
-  authMsg.textContent = "";
+  const stake = parseFloat(startingInput.value) > 0 ? parseFloat(startingInput.value) : 0;
 
-  if (!email || !password) {
-    authMsg.textContent = "Please enter email + password.";
-    return;
-  }
-
-  try {
-    if (authMode === "signin") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      closeAuthModal();
-      await refreshSession();
-      if (currentTab === "tracker") await loadTracker();
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      authMsg.textContent = "Signed up. If email confirmation is ON, check your inbox.";
-      // user may not be logged in until confirmed
-      await refreshSession();
-    }
-  } catch (e) {
-    authMsg.textContent = e?.message || "Auth error";
-  }
-}
-
-// ----------------------
-// Tabs
-// ----------------------
-function setTab(tab) {
-  currentTab = tab;
-  tabBtns.forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
-
-  if (tab === "value") {
-    document.getElementById("valueSection").style.display = "block";
-    document.getElementById("trackerSection").style.display = "none";
-    loadBets();
-  } else {
-    document.getElementById("valueSection").style.display = "none";
-    document.getElementById("trackerSection").style.display = "block";
-    loadTracker();
-  }
-}
-
-// ----------------------
-// Value bets
-// ----------------------
-function renderBetCard(bet) {
-  const date = bet.bet_date ? new Date(bet.bet_date).toISOString().slice(0, 10) : "";
-  const valuePct = bet.value_pct != null ? `${Number(bet.value_pct).toFixed(1)}%` : "";
-
-  return `
-    <div class="bet-card">
-      <div class="bet-left">
-        <div class="bet-match">${escapeHtml(bet.match || "")}</div>
-        <div class="bet-market">${escapeHtml(bet.market || "")}</div>
-        <div class="bet-meta">
-          <span class="pill">Value ${valuePct}</span>
-          <span class="pill">Odds ${escapeHtml(String(bet.odds ?? ""))}</span>
-        </div>
-      </div>
-      <div class="bet-right">
-        <div class="bet-date">${escapeHtml(date)}</div>
-        <button class="btn-add" data-id="${bet.id}">Add</button>
-      </div>
-    </div>
-  `;
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function getOrderBy() {
-  switch (currentSort) {
-    case "date_asc":
-      return { column: "bet_date", ascending: true };
-    case "value_desc":
-      return { column: "value_pct", ascending: false };
-    case "value_asc":
-      return { column: "value_pct", ascending: true };
-    case "date_desc":
-    default:
-      return { column: "bet_date", ascending: false };
-  }
-}
-
-async function loadBets() {
-  if (!betsContainer) return;
-  if (betsStatus) betsStatus.textContent = "Loading bets...";
-  betsContainer.innerHTML = "";
-
-  const { column, ascending } = getOrderBy();
-  const { data, error } = await supabase
-    .from("value_bets")
-    .select("id, match, market, odds, bet_date, value_pct")
-    .order(column, { ascending, nullsFirst: false });
-
-  if (error) {
-    if (betsStatus) betsStatus.textContent = "Error loading bets: " + error.message;
-    betsContainer.innerHTML = "";
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    if (betsStatus) betsStatus.textContent = "No bets found.";
-    betsContainer.innerHTML = "";
-    return;
-  }
-
-  if (betsStatus) betsStatus.textContent = "";
-  betsContainer.innerHTML = data.map(renderBetCard).join("");
-
-  // Add handlers
-  betsContainer.querySelectorAll(".btn-add").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const betId = btn.getAttribute("data-id");
-      await addToTracker(betId);
-    });
-  });
-}
-
-async function addToTracker(betId) {
-  if (!currentUser) {
-    setAuthMode("signin");
-    openAuthModal();
-    authMsg.textContent = "Please log in to add bets to your tracker.";
-    return;
-  }
-
-  // Fetch bet
-  const { data: bet, error: betErr } = await supabase
-    .from("value_bets")
-    .select("id, match, market, odds, bet_date")
-    .eq("id", betId)
-    .single();
-
-  if (betErr) {
-    alert(betErr.message);
-    return;
-  }
-
-  // Insert into bet_tracker (must have these columns)
+  // Build row using columns that exist in your bet_tracker table
   const payload = {
     user_id: currentUser.id,
     bet_id: bet.id,
     match: bet.match,
     market: bet.market,
     odds: bet.odds,
-    bet_date: bet.bet_date,
-    stake: null,
+    stake: bet.stake ?? 0,
     result: null,
-    profit: null,
+    match_date: bet.bet_date ?? null,
   };
 
-  const { error } = await supabase.from("bet_tracker").insert(payload);
-
-  if (error) {
-    alert(`Could not add: ${error.message}`);
+  const { error } = await client.from("bet_tracker").insert(payload);
+  if(error){
+    console.error("Insert bet_tracker error:", error);
+    alert("Could not add to tracker: " + (error.message || "Unknown error"));
     return;
   }
-
-  // Switch to tracker tab
-  setTab("tracker");
+  await loadTracker();
 }
 
-// ----------------------
-// Tracker
-// ----------------------
-function setStats({ totalProfit, totalStake, totalBets }) {
-  if (totalProfitEl) totalProfitEl.textContent = formatMoney(totalProfit);
-  if (totalStakeEl) totalStakeEl.textContent = formatMoney(totalStake);
-  if (totalBetsEl) totalBetsEl.textContent = String(totalBets);
-  if (betCountEl) betCountEl.textContent = String(totalBets);
+
+// ===== Insights (dropdown) =====
+const insightStore = {
+  bestMarket: { label: "Best Market", value: "—" },
+  worstMarket: { label: "Worst Market", value: "—" },
+  bestMonth:  { label: "Best Month",  value: "—" },
+  worstMonth: { label: "Worst Month", value: "—" },
+};
+
+function setInsight(key, value){
+  if(!insightStore[key]) return;
+  insightStore[key].value = value;
+  const hidden = document.getElementById(key);
+  if(hidden) hidden.textContent = value;
 }
 
-function formatMoney(v) {
-  const n = Number(v || 0);
-  return n.toFixed(2);
+function updateInsightUI(){
+  const sel = document.getElementById("insightSelect");
+  const labelEl = document.getElementById("insightLabel");
+  const valueEl = document.getElementById("insightValue");
+  if(!sel || !labelEl || !valueEl) return;
+  const key = sel.value || "bestMarket";
+  labelEl.textContent = insightStore[key]?.label || "Insights";
+  valueEl.textContent = insightStore[key]?.value || "—";
 }
 
-function renderTrackerTable(rows) {
-  if (!trackerTable) return;
+document.addEventListener("change", (e)=>{
+  if(e.target && e.target.id === "insightSelect"){
+    updateInsightUI();
+  }
+});
 
-  const head = `
-    <table class="tracker-table">
-      <thead>
-        <tr>
-          <th>Match</th>
-          <th>Market</th>
-          <th>Odds</th>
-          <th>Stake</th>
-          <th>Result</th>
-          <th>Profit</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
 
-  const body = rows
-    .map((r) => {
-      return `
-        <tr data-id="${r.id}">
-          <td>${escapeHtml(r.match || "")}</td>
-          <td>${escapeHtml(r.market || "")}</td>
-          <td>${escapeHtml(String(r.odds ?? ""))}</td>
-          <td><input class="trk-stake" type="number" step="0.01" min="0" value="${r.stake ?? ""}" placeholder="0"></td>
-          <td>
-            <select class="trk-result">
-              <option value="" ${r.result == null ? "selected" : ""}>Pending</option>
-              <option value="win" ${r.result === "win" ? "selected" : ""}>Win</option>
-              <option value="loss" ${r.result === "loss" ? "selected" : ""}>Loss</option>
-              <option value="void" ${r.result === "void" ? "selected" : ""}>Void</option>
-            </select>
-          </td>
-          <td>${escapeHtml(formatMoney(r.profit))}</td>
-        </tr>
-      `;
-    })
-    .join("");
+// ===== Tracker Filters (Bet Results) =====
+let trackerAllRows = [];
 
-  const foot = `</tbody></table>`;
+function _rowGameDateISO(row){
+  const raw = row.match_date_date || row.match_date || row.bet_date || row.created_at;
+  if(!raw) return "";
+  const d = new Date(raw);
+  if(isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0,10); // YYYY-MM-DD
+}
 
-  trackerTable.innerHTML = head + body + foot;
+function _applyTrackerFilters(rows){
+  const dateEl = document.getElementById("filterDate");
+  const marketEl = document.getElementById("filterMarket");
+  const dateVal = dateEl ? (dateEl.value || "") : "";
+  const marketVal = marketEl ? (marketEl.value || "").trim().toLowerCase() : "";
 
-  // Wire inputs
-  trackerTable.querySelectorAll("tr[data-id]").forEach((tr) => {
-    const id = tr.getAttribute("data-id");
-    const stakeInput = tr.querySelector(".trk-stake");
-    const resultSelect = tr.querySelector(".trk-result");
-
-    const save = async () => {
-      const stake = stakeInput.value === "" ? null : Number(stakeInput.value);
-      const result = resultSelect.value === "" ? null : resultSelect.value;
-
-      // Profit calc (simple): win => stake*(odds-1), loss => -stake, void => 0
-      let profit = null;
-      if (stake != null && result) {
-        if (result === "win") profit = stake * (Number(tr.querySelectorAll('td')[2].textContent) - 1);
-        if (result === "loss") profit = -stake;
-        if (result === "void") profit = 0;
-      }
-
-      const { error } = await supabase
-        .from("bet_tracker")
-        .update({ stake, result, profit })
-        .eq("id", id);
-
-      if (error) {
-        alert(error.message);
-        return;
-      }
-
-      await loadTracker();
-    };
-
-    stakeInput.addEventListener("change", save);
-    resultSelect.addEventListener("change", save);
+  return (rows || []).filter(r=>{
+    // date filter
+    if(dateVal){
+      const iso = _rowGameDateISO(r);
+      if(iso !== dateVal) return false;
+    }
+    // market filter (matches market OR match text)
+    if(marketVal){
+      const m = (r.market || "").toLowerCase();
+      const match = (r.match || "").toLowerCase();
+      if(!m.includes(marketVal) && !match.includes(marketVal)) return false;
+    }
+    return true;
   });
 }
 
-async function loadTracker() {
-  if (!currentUser) {
-    trackerTable.innerHTML = `<div class="empty">Log in to use the tracker.</div>`;
+function _buildTrackerTableHTML(rows){
+  let html = `<table>
+    <tr>
+      <th>Date</th>
+      <th>Match</th>
+      <th>Stake</th>
+      <th>Result</th>
+      <th class="profit-col">Profit</th>
+    </tr>`;
+  (rows || []).forEach(row=>{
+    const stakeVal = row.stake ?? 0;
+    const res = row.result || "pending";
+    let profit = 0;
+    if(res === "won") profit = (row.profit != null ? row.profit : row.stake * (row.odds - 1));
+    if(res === "lost") profit = (row.profit != null ? row.profit : -row.stake);
+    if(res === "pending") profit = 0;
+
+    const profitClass = profit >= 0 ? "profit-win" : "profit-loss";
+    const profitText = (profit >= 0 ? `£${profit.toFixed(2)}` : `£${profit.toFixed(2)}`);
+
+    const dateLabel = fmtLabel(row.match_date_date || row.match_date || row.bet_date || row.created_at);
+
+    html += `<tr>
+      <td class="date-col">${dateLabel}</td>
+      <td>${row.match || ""}</td>
+      <td><input class="stake-input" type="number" value="${stakeVal}" data-id="${row.id}" data-field="stake"></td>
+      <td>
+        <select class="result-select result-${res}" data-id="${row.id}" data-field="result">
+          <option value="pending" ${res==="pending"?"selected":""}>pending</option>
+          <option value="won" ${res==="won"?"selected":""}>won</option>
+          <option value="lost" ${res==="lost"?"selected":""}>lost</option>
+        </select>
+      </td>
+      <td class="profit-col ${profitClass}">${profitText}</td>
+    </tr>`;
+  });
+  html += `</table>`;
+  return html;
+}
+
+function _renderFilteredTrackerTable(){
+  const tableEl = document.getElementById("trackerTable");
+  const countEl = document.getElementById("betCount");
+  if(!tableEl) return;
+
+  const filtered = _applyTrackerFilters(trackerAllRows);
+  tableEl.innerHTML = _buildTrackerTableHTML(filtered);
+  if(countEl) countEl.textContent = filtered.length;
+
+  // re-bind inline input/select listeners for edited rows
+  bindTrackerTableInputs();
+}
+
+let _filtersWired = false;
+function wireTrackerFilters(){
+  if(_filtersWired) return;
+  _filtersWired = true;
+
+  const dateEl = document.getElementById("filterDate");
+  const marketEl = document.getElementById("filterMarket");
+  const todayBtn = document.getElementById("todayToggle");
+  const clearBtn = document.getElementById("clearFilters");
+
+  if(dateEl) dateEl.addEventListener("change", _renderFilteredTrackerTable);
+  if(marketEl) marketEl.addEventListener("input", _renderFilteredTrackerTable);
+
+  if(todayBtn){
+    todayBtn.addEventListener("click", ()=>{
+      if(dateEl){
+        const today = new Date();
+        dateEl.value = today.toISOString().slice(0,10);
+      }
+      _renderFilteredTrackerTable();
+    });
+  }
+
+  if(clearBtn){
+    clearBtn.addEventListener("click", ()=>{
+      if(dateEl) dateEl.value = "";
+      if(marketEl) marketEl.value = "";
+      _renderFilteredTrackerTable();
+    });
+  }
+}
+
+let dailyChart;
+let monthlyChart;
+let marketChart;
+
+function fmtDayLabel(d){
+  if(!d) return "";
+  const dt = new Date(d);
+  if(Number.isNaN(dt.getTime())) return String(d);
+  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+function isEndOfDay(index, labels){
+  if(!labels || !labels.length) return false;
+  if(index === labels.length - 1) return true;
+  return labels[index] !== labels[index + 1];
+}
+
+function renderDailyChart(history, labels){
+if(dailyChart) dailyChart.destroy();
+const ctx=document.getElementById("chart").getContext("2d");
+dailyChart=new Chart(ctx,{
+type:"line",
+data:{
+labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
+datasets:[{
+data:history,
+tension:0.25,
+fill:true,
+backgroundColor:"rgba(34,197,94,0.08)",
+borderColor:"#22c55e",
+borderWidth:2,
+	// Show dots ONLY on the last point of each day
+	pointRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 5 : 0,
+	pointHoverRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 7 : 0,
+	pointBackgroundColor:"#22c55e",
+	pointBorderWidth:0
+}]
+},
+	options:{
+	  responsive:true,
+	  maintainAspectRatio:false,
+	  interaction:{ mode:"nearest", intersect:true },
+	  scales:{
+	    y:{ ticks:{ callback:(v)=> `£${v}` } },
+	    x:{
+	      ticks:{
+	        callback:function(value, index){
+	          const label = this.getLabelForValue(value);
+	          if(index === 0) return label;
+	          return label !== labels[index - 1] ? label : "";
+	        }
+	      }
+	    }
+	  },
+	  plugins:{
+	    legend:{display:false},
+	    tooltip:{
+	      enabled:true,
+	      callbacks:{
+	        label:(ctx)=> `£${Number(ctx.parsed.y).toFixed(2)}`
+	      }
+	    }
+	  }
+	}
+});
+}
+
+
+async function loadTracker(){
+  if(!currentUser){
+    // not logged in: show nothing
+    trackerAllRows = [];
+    trackerTable.innerHTML = "";
     setStats({ totalProfit: 0, totalStake: 0, totalBets: 0 });
     return;
   }
 
-  trackerTable.innerHTML = `<div class="loading">Loading tracker...</div>`;
-
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("bet_tracker")
-    .select("id, match, market, odds, stake, result, profit")
-    .order("created_at", { ascending: false });
+    .select("*")
+    .order("created_at", { ascending: true });
 
-  if (error) {
-    trackerTable.innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+  if(error){
+    console.error("Load tracker error:", error);
+    trackerAllRows = [];
+    trackerTable.innerHTML = "";
     setStats({ totalProfit: 0, totalStake: 0, totalBets: 0 });
     return;
   }
 
-  const rows = data || [];
-  const totalStake = rows.reduce((a, r) => a + (Number(r.stake) || 0), 0);
-  const totalProfit = rows.reduce((a, r) => a + (Number(r.profit) || 0), 0);
+  trackerAllRows = data || [];
+  wireTrackerFilters();
 
-  setStats({ totalProfit, totalStake, totalBets: rows.length });
-  renderTrackerTable(rows);
+  let start=parseFloat(document.getElementById("startingBankroll").value);
+  if(isNaN(start)) start=0;
+  const filtered = applyTrackerFilters(trackerAllRows);
+
+  const stats = calcStats(filtered, start);
+  setStats(stats);
+  renderTracker(filtered);
 }
 
-// ----------------------
-// Collapsible UI
-// ----------------------
-window.toggleTracker = function toggleTracker() {
-  const isCollapsed = trackerWrapper.classList.contains("collapsed");
-  trackerWrapper.classList.toggle("collapsed", !isCollapsed);
-  trackerArrow.textContent = isCollapsed ? "▲" : "▼";
-};
 
-window.toggleMonthly = function toggleMonthly() {
-  const isCollapsed = monthlyWrapper.classList.contains("collapsed");
-  monthlyWrapper.classList.toggle("collapsed", !isCollapsed);
-  monthlyArrow.textContent = isCollapsed ? "▲" : "▼";
-  if (monthlyTable) monthlyTable.innerHTML = ""; // optional
-};
+const totalBets = data.length;
+const totalElem = document.getElementById("totalBets");
+if(totalElem) totalElem.innerText = totalBets;
+const totalStakedCard = document.getElementById("totalStakedCard");
+if(totalStakedCard){
+  totalStakedCard.innerText = totalStake.toFixed(2);
+}
 
-// Chart tabs (just switching panes; charts optional)
-const chartTabBtns = Array.from(document.querySelectorAll(".chart-tabs .tab-btn"));
-const chartPanes = Array.from(document.querySelectorAll(".chart-pane"));
-chartTabBtns.forEach((b) => {
-  b.addEventListener("click", () => {
-    chartTabBtns.forEach((x) => x.classList.toggle("active", x === b));
-    const t = b.dataset.tab;
-    chartPanes.forEach((p) => p.classList.toggle("active", p.id === `pane-${t}`));
+
+avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
+
+profitCard.classList.remove("glow-green","glow-red");
+if(profit>0) profitCard.classList.add("glow-green");
+if(profit<0) profitCard.classList.add("glow-red");
+
+
+// Daily labels based on the *game* date when available
+const dailyLabels = data.map(r => fmtDayLabel(r.match_date_date || r.bet_date || r.created_at));
+renderDailyChart(history, dailyLabels);
+
+// ---- Monthly & Market analytics (tabs + mini summary) ----
+const countElem = document.getElementById("betCount");
+if(countElem) countElem.textContent = String(data.length);
+
+// Monthly profit aggregation (ROI version)
+const monthMap = {};
+const monthStakeMap = {};
+
+data.forEach(r=>{
+  const d = new Date(r.created_at);
+  const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
+  monthStakeMap[key] = (monthStakeMap[key]||0) + r.stake;
+});
+
+const monthKeys = Object.keys(monthMap).sort();
+
+const monthLabels = monthKeys.map(k=>{
+  const [y,m]=k.split("-");
+  return new Date(parseInt(y), parseInt(m)-1, 1)
+    .toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+});
+
+const monthlyProfit = monthKeys.map(k=> monthMap[k]);
+const monthlyROI = monthKeys.map(k=>{
+  const stake = monthStakeMap[k] || 0;
+  return stake ? (monthMap[k] / stake) * 100 : 0;
+});
+
+renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
+
+  let breakdownHTML = "<table><tr><th>Month</th><th>Profit</th><th>ROI</th></tr>";
+  monthKeys.forEach((k,i)=>{
+    const p = monthlyProfit[i];
+    const r = monthlyROI[i];
+    breakdownHTML += `<tr>
+      <td>${monthLabels[i]}</td>
+      <td class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</td>
+      <td>${r.toFixed(1)}%</td>
+    </tr>`;
   });
+  breakdownHTML += "</table>";
+  const tableEl = document.getElementById("monthlyTable");
+  if(tableEl) tableEl.innerHTML = breakdownHTML;
+
+// Market profit aggregation
+const marketMap = {};
+const marketWL = {}; // {market:{wins,losses,pending,bets}}
+data.forEach(r=>{
+  const mk = (r.market && String(r.market).trim()) ? String(r.market).trim() : "Unknown";
+  marketMap[mk] = (marketMap[mk]||0) + rowProfit(r);
+
+  if(!marketWL[mk]) marketWL[mk] = {wins:0,losses:0,pending:0,bets:0};
+  marketWL[mk].bets += 1;
+  const res = (r.result || "pending").toLowerCase();
+  if(res === "won") marketWL[mk].wins += 1;
+  else if(res === "lost") marketWL[mk].losses += 1;
+  else marketWL[mk].pending += 1;
 });
 
-// ----------------------
-// Boot
-// ----------------------
-if (authBtn) authBtn.addEventListener("click", handleAuthButton);
-if (authClose) authClose.addEventListener("click", closeAuthModal);
-if (authBackdrop) authBackdrop.addEventListener("click", closeAuthModal);
-if (authSubmit) authSubmit.addEventListener("click", submitAuth);
-if (authToggle)
-  authToggle.addEventListener("click", () => setAuthMode(authMode === "signin" ? "signup" : "signin"));
+// Build win% series (resolved only); show top 8 by bet count
+let entries = Object.entries(marketWL);
+entries.sort((a,b)=>(b[1].bets)-(a[1].bets));
+entries = entries.slice(0,8);
 
-// Main tabs
-const mainTabBtns = Array.from(document.querySelectorAll('.main-tabs .tab-btn'));
-mainTabBtns.forEach((b) => {
-  b.addEventListener('click', () => setTab(b.dataset.tab));
+const labels = entries.map(e=>e[0]);
+const totals = entries.map(e=>({ bets:e[1].bets, wins:e[1].wins, losses:e[1].losses }));
+const winPct = entries.map(e=>{
+  const resolved = e[1].wins + e[1].losses;
+  return resolved ? (e[1].wins / resolved) * 100 : 0;
+});
+renderMarketChart(labels, winPct, totals);
+
+// Mini summary
+if(entries.length){
+  const bestM = [...Object.entries(marketMap)].sort((a,b)=>b[1]-a[1])[0];
+  const worstM = [...Object.entries(marketMap)].sort((a,b)=>a[1]-b[1])[0];
+  setMiniValue("bestMarket", bestM[0]+":", (bestM[1] >= 0 ? "+£" : "-£") + Math.abs(bestM[1]).toFixed(2));
+  setMiniValue("worstMarket", worstM[0]+":", (worstM[1] >= 0 ? "+£" : "-£") + Math.abs(worstM[1]).toFixed(2));
+}
+if(monthKeys.length){
+  const monthEntries = monthKeys.map(k=>[k, monthMap[k]]);
+  const bestMo = [...monthEntries].sort((a,b)=>b[1]-a[1])[0];
+  const worstMo = [...monthEntries].sort((a,b)=>a[1]-b[1])[0];
+  const fmtMonth = (k)=>{
+    const [y,m]=k.split("-");
+    return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
+  };
+  setMiniValue("bestMonth", fmtMonth(bestMo[0])+":", (bestMo[1] >= 0 ? "+£" : "-£") + Math.abs(bestMo[1]).toFixed(2));
+  setMiniValue("worstMonth", fmtMonth(worstMo[0])+":", (worstMo[1] >= 0 ? "+£" : "-£") + Math.abs(worstMo[1]).toFixed(2));
+}
+
+}
+
+
+async function updateStake(id,val){
+await client.from("bet_tracker").update({stake:parseFloat(val)}).eq("id",id);
+loadTracker();
+}
+
+async function updateResult(id,val){
+if(val==="delete"){
+if(!confirm("Delete this bet?")){loadTracker();return;}
+await client.from("bet_tracker").delete().eq("id",id);
+}else{
+await client.from("bet_tracker").update({result:val}).eq("id",id);
+}
+loadTracker();
+}
+
+function exportCSV(){
+client.from("bet_tracker").select("*").then(({data})=>{
+let csv="match,market,odds,stake,result\n";
+data.forEach(r=>{
+csv+=`${r.match},${r.market},${r.odds},${r.stake},${r.result}\n`;
+});
+const blob=new Blob([csv],{type:"text/csv"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;
+a.download="bet_tracker.csv";
+a.click();
+});
+}
+
+(async ()=>{ await refreshSession(); await loadBets(); await loadTracker(); })();
+
+
+// Toggle with animation + memory
+function toggleTracker(){
+  const wrapper = document.getElementById("trackerWrapper");
+  const arrow = document.getElementById("trackerArrow");
+
+  if(wrapper.classList.contains("collapsed")){
+    wrapper.classList.remove("collapsed");
+    wrapper.classList.add("expanded");
+    arrow.innerText="▲";
+    localStorage.setItem("tracker_open","true");
+  }else{
+    wrapper.classList.remove("expanded");
+    wrapper.classList.add("collapsed");
+    arrow.innerText="▼";
+    localStorage.setItem("tracker_open","false");
+  }
+}
+
+// Restore state on load
+document.addEventListener("DOMContentLoaded",function(){
+  const wrapper=document.getElementById("trackerWrapper");
+  const arrow=document.getElementById("trackerArrow");
+  const open=localStorage.getItem("tracker_open");
+  if(open==="true"){
+    wrapper.classList.remove("collapsed");
+    wrapper.classList.add("expanded");
+    arrow.innerText="▲";
+  }
 });
 
-if (sortSelect) {
-  sortSelect.addEventListener("change", () => {
-    currentSort = sortSelect.value;
-    loadBets();
+// Extend loadTracker to update bet count
+const originalLoadTracker = loadTracker;
+loadTracker = async function(){
+  await originalLoadTracker();
+  const rows=document.querySelectorAll("#trackerTable table tr").length-1;
+  const count=document.getElementById("betCount");
+  if(count && rows>=0){count.innerText=rows;}
+};
+
+
+
+
+function renderMonthlyChart(profits, roi, labels){
+  const el = document.getElementById("monthlyChart");
+  if(!el) return;
+  if(monthlyChart) monthlyChart.destroy();
+
+  const maxROI = Math.max(...roi, 5);
+  const minROI = Math.min(...roi, -5);
+  const pad = 5;
+
+  const ctx = el.getContext("2d");
+
+  monthlyChart = new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:labels,
+      datasets:[{
+        data:roi,
+        borderRadius:10,
+        barThickness:24,
+        backgroundColor:profits.map(v=>{
+          if(v>0) return "rgba(34,197,94,0.9)";
+          if(v<0) return "rgba(239,68,68,0.9)";
+          return "rgba(100,116,139,0.4)";
+        })
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{
+          min: Math.floor(minROI - pad),
+          max: Math.ceil(maxROI + pad),
+          ticks:{callback:(v)=>v+"%"},
+          grid:{color:"rgba(255,255,255,0.05)"}
+        }
+      }
+    },
+    plugins:[{
+      afterDatasetsDraw(chart){
+        const {ctx} = chart;
+        chart.getDatasetMeta(0).data.forEach((bar,i)=>{
+          const val = profits[i];
+          if(val === 0) return;
+          ctx.fillStyle="#fff";
+          ctx.font="bold 13px system-ui";
+          ctx.textAlign="center";
+          ctx.fillText("£"+val.toFixed(2), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
+        });
+      }
+    }]
   });
 }
 
-supabase.auth.onAuthStateChange((_event, session) => {
-  currentUser = session?.user || null;
-  updateAuthUI();
-  if (currentTab === "tracker") loadTracker();
+
+function renderMarketChart(labels, winPct, totals){
+  const el = document.getElementById("marketChart");
+  if(!el) return;
+  if(marketChart) marketChart.destroy();
+
+  const ctx = el.getContext("2d");
+  marketChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: winPct,
+        borderWidth: 0,
+        borderRadius: 10,
+        barThickness: 18,
+        backgroundColor: winPct.map(v=>{
+          if(v >= 55) return "rgba(34,197,94,0.85)";   // green
+          if(v >= 40) return "rgba(245,158,11,0.85)";  // amber
+          return "rgba(239,68,68,0.85)";               // red
+        }),
+        borderColor: winPct.map(v=>{
+          if(v >= 55) return "#22c55e";
+          if(v >= 40) return "#f59e0b";
+          return "#ef4444";
+        })
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx)=>{
+              const i = ctx.dataIndex;
+              const pct = Number(ctx.raw || 0).toFixed(0) + "%";
+              const t = (totals && totals[i]) ? totals[i] : { bets: 0, wins: 0, losses: 0 };
+              return `Win rate: ${pct} • Bets: ${t.bets} (W:${t.wins} L:${t.losses})`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          min: 0,
+          max: 100,
+          ticks: { display: false },
+          grid: { display: false, drawBorder: false }
+        },
+        y: {
+          ticks: { color: "rgba(229,231,235,0.85)", font: { weight: 800 } },
+          grid: { display: false, drawBorder: false }
+        }
+      },
+      animation: { duration: 250 }
+    },
+    plugins: [{
+      id: "pctLabels",
+      afterDatasetsDraw(chart){
+        const {ctx} = chart;
+        const meta = chart.getDatasetMeta(0);
+        ctx.save();
+        ctx.font = "800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        ctx.fillStyle = "rgba(229,231,235,0.95)";
+        meta.data.forEach((bar, i)=>{
+          const val = winPct[i] ?? 0;
+          const text = Math.round(val) + "%";
+          const x = bar.x - 10; // inside bar near end
+          const y = bar.y + 4;
+          ctx.textAlign = "right";
+          ctx.fillText(text, x, y);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+function setMiniValue(id, prefix, value){
+  // legacy helper kept, now feeds Insights dropdown
+  const txt = (prefix ? (prefix + " ") : "") + (value || "—");
+  setInsight(id, txt);
+  updateInsightUI();
+}
+
+
+
+
+function initChartTabs(){
+  const btns = document.querySelectorAll(".tab-btn");
+  if(!btns.length) return;
+
+  btns.forEach(b=>{
+    b.addEventListener("click", ()=>{
+      btns.forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      const tab = b.getAttribute("data-tab");
+      document.querySelectorAll(".chart-pane").forEach(p=>p.classList.remove("active"));
+      const pane = document.getElementById("pane-"+tab);
+      if(pane) pane.classList.add("active");
+    });
+  });
+}
+
+
+function rowProfit(row){
+  if(row.result === "won") return row.stake * (row.odds - 1);
+  if(row.result === "lost") return -row.stake;
+  return 0;
+}
+
+
+function toggleInsights(){
+  const content = document.getElementById("insightsContent");
+  const arrow = document.getElementById("insightsArrow");
+
+  if(content.classList.contains("insights-collapsed")){
+    content.classList.remove("insights-collapsed");
+    content.classList.add("insights-expanded");
+    arrow.innerText="▲";
+  }else{
+    content.classList.remove("insights-expanded");
+    content.classList.add("insights-collapsed");
+    arrow.innerText="▼";
+  }
+}
+
+
+// Auto-close Insights when switching chart tabs
+document.addEventListener("click", function(e){
+  if(e.target.classList.contains("tab-btn")){
+    const content = document.getElementById("insightsContent");
+    const arrow = document.getElementById("insightsArrow");
+    if(content && !content.classList.contains("insights-collapsed")){
+      content.classList.remove("insights-expanded");
+      content.classList.add("insights-collapsed");
+      arrow.innerText="▼";
+    }
+  }
 });
 
-refreshSession().then(() => {
-  setTab("value");
-});
+function toggleMonthly(){
+  const wrapper=document.getElementById("monthlyWrapper");
+  const arrow=document.getElementById("monthlyArrow");
+  if(wrapper.classList.contains("collapsed")){
+    wrapper.classList.remove("collapsed");
+    wrapper.classList.add("expanded");
+    arrow.innerText="▲";
+  }else{
+    wrapper.classList.remove("expanded");
+    wrapper.classList.add("collapsed");
+    arrow.innerText="▼";
+  }
+}
+const startingInput = document.getElementById("startingBankroll");
+
+if(startingInput){
+  // Load saved value
+  const saved = localStorage.getItem("starting_bankroll");
+  if(saved){
+    startingInput.value = saved;
+  }
+
+  // Save on change
+  startingInput.addEventListener("input", function(){
+    localStorage.setItem("starting_bankroll", this.value);
+  });
+}
