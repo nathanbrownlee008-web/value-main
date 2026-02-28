@@ -28,16 +28,17 @@ const {data}=await client.from("value_bets").select("*").order("bet_date",{ascen
 betsGrid.innerHTML="";
 if(!data) return;
 data.forEach(row=>{
-betsGrid.innerHTML += `
-<div class="bet-card">
-  <div class="bet-match">${row.match}</div>
-  <div class="bet-market">${row.market}</div>
-  <div class="bet-date">${row.bet_date}</div>
-  <div class="bet-odds">${row.odds}</div>
-  <button class="bet-btn"
-    onclick='addToTracker(${JSON.stringify(row)})'>
-    Add to Tracker
-  </button>
+betsGrid.innerHTML+=`
+<div class="card bet-card">
+  <h3 class="bet-title">${row.match}</h3>
+  <div class="bet-meta">
+    <span class="bet-market">${row.market}</span>
+    <span class="bet-date">${row.bet_date}</span>
+  </div>
+  <div class="bet-footer">
+    <span class="odds-badge">Odds <strong>${row.odds}</strong></span>
+    <button class="bet-btn" onclick='addToTracker(${JSON.stringify(row)})'>Add</button>
+  </div>
 </div>`;
 });
 }
@@ -315,12 +316,19 @@ bankrollElem.innerText=bankroll.toFixed(2);
 profitElem.innerText=profit.toFixed(2);
 roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
 winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
-winsElem.innerText=wins;
-lossesElem.innerText=losses;
+const wonLostElem = document.getElementById("wonLost");
+if(wonLostElem){
+  wonLostElem.innerText = `${wins}-${losses}`;
+}
 
 const totalBets = data.length;
 const totalElem = document.getElementById("totalBets");
 if(totalElem) totalElem.innerText = totalBets;
+const totalStakedCard = document.getElementById("totalStakedCard");
+if(totalStakedCard){
+  totalStakedCard.innerText = totalStake.toFixed(2);
+}
+
 
 avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
 
@@ -340,23 +348,12 @@ if(countElem) countElem.textContent = String(data.length);
 // Monthly profit aggregation (ROI version)
 const monthMap = {};
 const monthStakeMap = {};
-const monthBetCountMap = {};
 
 data.forEach(r=>{
   const d = new Date(r.created_at);
   const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-
-  const stake = Number(r.stake) || 0;
-  const odds = Number(r.odds) || 0;
-  const result = (r.result || "").toLowerCase();
-
-  let profit = 0;
-  if(result === "won") profit = (stake * odds) - stake;
-  if(result === "lost") profit = -stake;
-
-  monthMap[key] = (monthMap[key] || 0) + profit;
-  monthStakeMap[key] = (monthStakeMap[key] || 0) + stake;
-  monthBetCountMap[key] = (monthBetCountMap[key] || 0) + 1;
+  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
+  monthStakeMap[key] = (monthStakeMap[key]||0) + r.stake;
 });
 
 const monthKeys = Object.keys(monthMap).sort();
@@ -375,40 +372,19 @@ const monthlyROI = monthKeys.map(k=>{
 
 renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
 
-let breakdownHTML = `
-<table>
-<tr>
-<th>Month</th>
-<th>Profit</th>
-<th>ROI</th>
-<th>Bets</th>
-<th>Staked</th>
-</tr>
-`;
-
-monthKeys.forEach((k,i)=>{
-  const p = monthlyProfit[i] || 0;
-  const r = monthlyROI[i] || 0;
-  const stake = monthStakeMap[k] || 0;
-  const bets = monthBetCountMap[k] || 0;
-
-  breakdownHTML += `
-  <tr>
-    <td>${monthLabels[i]}</td>
-    <td class="${p>0?'profit-win':p<0?'profit-loss':''}">
-      £${p.toFixed(2)}
-    </td>
-    <td>${r.toFixed(1)}%</td>
-    <td>${bets}</td>
-    <td>£${stake.toFixed(2)}</td>
-  </tr>
-  `;
-});
-
-breakdownHTML += "</table>";
-
-const tableEl = document.getElementById("monthlyTable");
-if(tableEl) tableEl.innerHTML = breakdownHTML;
+  let breakdownHTML = "<table><tr><th>Month</th><th>Profit</th><th>ROI</th></tr>";
+  monthKeys.forEach((k,i)=>{
+    const p = monthlyProfit[i];
+    const r = monthlyROI[i];
+    breakdownHTML += `<tr>
+      <td>${monthLabels[i]}</td>
+      <td class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</td>
+      <td>${r.toFixed(1)}%</td>
+    </tr>`;
+  });
+  breakdownHTML += "</table>";
+  const tableEl = document.getElementById("monthlyTable");
+  if(tableEl) tableEl.innerHTML = breakdownHTML;
 
 // Market profit aggregation
 const marketMap = {};

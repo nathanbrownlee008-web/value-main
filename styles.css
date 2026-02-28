@@ -5,8 +5,21 @@ body{background:#0f172a;color:#e2e8f0;font-family:Inter,sans-serif;margin:0;padd
 .tabs button{background:#1e293b;color:#fff;border:none;padding:8px 16px;border-radius:8px;margin:0 5px;cursor:pointer}
 .tabs .active{background:#334155}
 
-.bets-grid{display:grid;gap:14px}
-.card{background:#1e293b;padding:16px;border-radius:14px}
+.bets-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap:10px;
+}
+.card{
+  background: rgba(30,41,59,0.70);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:13px;
+  line-height:1.3;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+  backdrop-filter: blur(6px);
+}
 
 .tracker-controls{
   display:flex;
@@ -175,7 +188,7 @@ th{text-align:left}
 
 #monthlyChart{
   width: 100% !important;
-  height: 300px !important;
+  height: 400px !important;
 }
 
 .bet-count{
@@ -355,73 +368,83 @@ th{text-align:left}
 }
 
 
-/* ===== PROFESSIONAL COMPACT GRID ===== */
 
-.bets-grid{
-  display:grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap:16px;
-}
-
-@media (max-width: 768px){
-  .bets-grid{
-    grid-template-columns: 1fr;
-  }
-}
-
+/* ===== Value Bets: compact tiles ===== */
 .bet-card{
-  background:#1e293b;
-  border-radius:18px;
-  padding:16px;
-  box-shadow:0 8px 22px rgba(0,0,0,0.45);
-  border:1px solid rgba(255,255,255,0.05);
-  transition:0.2s ease;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
 
 .bet-card:hover{
-  transform:translateY(-3px);
-  box-shadow:0 14px 30px rgba(0,0,0,0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.28);
+  border-color: rgba(34,197,94,0.22);
 }
 
-.bet-match{
-  font-size:15px;
-  font-weight:700;
-  margin-bottom:4px;
-  color:#f1f5f9;
+.bet-title{
+  font-size:14px;
+  margin:0;
+  font-weight:800;
+  letter-spacing:0.1px;
+}
+
+.bet-meta{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  font-size:12px;
+  opacity:0.86;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 .bet-market{
-  font-size:13px;
-  opacity:0.7;
-  margin-bottom:6px;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 .bet-date{
-  font-size:12px;
-  opacity:0.55;
-  margin-bottom:10px;
+  opacity:0.75;
 }
 
-.bet-odds{
-  font-size:22px;
-  font-weight:800;
-  text-align:right;
-  margin-bottom:12px;
+.bet-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:2px;
+}
+
+.odds-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 8px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  white-space:nowrap;
+}
+
+.odds-badge strong{
+  font-weight:900;
 }
 
 .bet-btn{
-  width:100%;
-  padding:8px;
-  border-radius:12px;
-  font-weight:700;
-  font-size:13px;
-  background:#334155;
-  border:none;
-  color:#fff;
-  cursor:pointer;
-  transition:0.2s ease;
+  padding:5px 9px;
+  font-size:12px;
+  border-radius:8px;
+  background: rgba(34,197,94,0.16);
+  border: 1px solid rgba(34,197,94,0.30);
+  color:#e2e8f0;
+  font-weight:800;
 }
 
 .bet-btn:hover{
-  background:#475569;
+  background: rgba(34,197,94,0.22);
 }
