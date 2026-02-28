@@ -6,29 +6,6 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     // Add a hard timeout so "Loading…" never hangs forever on mobile/production
     fetch: (input, init = {}) => {
       const controller = new AbortController();
-// ===== DEBUG BOOTSTRAP (DEBUG2-162012) =====
-(function(){
-  function setStatus(txt){
-    const el = document.getElementById("betsStatus");
-    if(el) el.innerHTML = txt;
-  }
-  window.addEventListener("error", function(e){
-    try{ setStatus('<span class="bad">JS error</span><br><b>' + (e.message||'Unknown') + '</b>'); }catch(_e){}
-  });
-  window.addEventListener("unhandledrejection", function(e){
-    try{ setStatus('<span class="bad">Promise rejected</span><br><b>' + (e.reason?.message||String(e.reason)) + '</b>'); }catch(_e){}
-  });
-  document.addEventListener("DOMContentLoaded", function(){
-    setStatus('<span class="ok">JS loaded</span> • build <b>DEBUG2-162012</b><br>Starting Supabase…');
-  });
-  // If still "Loading" after 10s, show a hint
-  setTimeout(function(){
-    const el = document.getElementById("betsStatus");
-    if(el && /Loading bets/i.test(el.textContent||'')){
-      el.innerHTML = '<span class="bad">Still loading after 10s</span><br><span style="opacity:.75">This usually means the deployed site is still serving an older build, or app.js failed to load.</span>';
-    }
-  }, 10000);
-})();
 
       const t = setTimeout(() => controller.abort(), 8000);
       return fetch(input, { ...init, signal: controller.signal })
@@ -172,7 +149,7 @@ async function loadBets(){
       ? "sb_* (new key format)"
       : "JWT (starts eyJ…)";
 
-    setBetsStatus(`Loading bets…<br><span style="opacity:.75">URL:</span> <b>${SUPABASE_URL}</b><br><span style="opacity:.75">Key:</span> <b>${keyType}</b>`);
+    setBetsStatus(`Loading bets...<br><span style="opacity:.75">URL:</span> <b>${SUPABASE_URL}</b><br><span style="opacity:.75">Key:</span> <b>${keyType}</b>`);
 
     // quick connectivity check (no ordering)
     const ping = await client.from("value_bets").select("id").limit(1);
@@ -913,3 +890,11 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
+
+
+// Ensure bets load on page ready
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof loadBets === "function") {
+    loadBets();
+  }
+});
