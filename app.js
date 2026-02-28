@@ -1,7 +1,7 @@
 // Top Daily Tips (static) + Supabase Auth + RLS-friendly tracker
 // IMPORTANT: Paste your own values below (keep the quotes)
-const SUPABASE_URL = "https://krmmmutcejnzdfupexpv.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
+const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -10,9 +10,10 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ----------------------
 const el = (id) => document.getElementById(id);
 
-const betsContainer = el("betsContainer");
+const betsContainer = el("betsContainer") || el("betsGrid");
+const betsStatus = el("betsStatus");
 const tabBtns = Array.from(document.querySelectorAll(".tab-btn"));
-const sortSelect = el("sortSelect");
+const sortSelect = el("sortSelect") || el("betsSort");
 
 const authBtn = el("authBtn");
 const authModal = el("authModal");
@@ -26,8 +27,8 @@ const authSubmit = el("authSubmit");
 const authToggle = el("authToggle");
 const authMsg = el("authMsg");
 
-const totalProfitEl = el("totalProfit");
-const totalStakeEl = el("totalStake");
+const totalProfitEl = el("totalProfit") || el("profit");
+const totalStakeEl = el("totalStake") || el("totalStakedCard");
 const totalBetsEl = el("totalBets");
 const betCountEl = el("betCount");
 const trackerWrapper = el("trackerWrapper");
@@ -199,7 +200,8 @@ function getOrderBy() {
 
 async function loadBets() {
   if (!betsContainer) return;
-  betsContainer.innerHTML = `<div class="loading">Loading bets...</div>`;
+  if (betsStatus) betsStatus.textContent = "Loading bets...";
+  betsContainer.innerHTML = "";
 
   const { column, ascending } = getOrderBy();
   const { data, error } = await supabase
@@ -208,15 +210,18 @@ async function loadBets() {
     .order(column, { ascending, nullsFirst: false });
 
   if (error) {
-    betsContainer.innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    if (betsStatus) betsStatus.textContent = "Error loading bets: " + error.message;
+    betsContainer.innerHTML = "";
     return;
   }
 
   if (!data || data.length === 0) {
-    betsContainer.innerHTML = `<div class="empty">No bets found.</div>`;
+    if (betsStatus) betsStatus.textContent = "No bets found.";
+    betsContainer.innerHTML = "";
     return;
   }
 
+  if (betsStatus) betsStatus.textContent = "";
   betsContainer.innerHTML = data.map(renderBetCard).join("");
 
   // Add handlers
