@@ -387,3 +387,34 @@ th{text-align:left}
   border-radius:8px;
   cursor:pointer;
 }
+.value-table{
+  width:100%;
+  border-collapse:collapse;
+  background:rgba(255,255,255,0.03);
+  border-radius:14px;
+  overflow:hidden;
+}
+
+.value-table th{
+  padding:14px;
+  text-align:left;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+.value-table td{
+  padding:14px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+.value-table tr:hover{
+  background:rgba(255,255,255,0.04);
+}
+
+.add-btn{
+  background:#22c55e;
+  border:none;
+  padding:6px 10px;
+  border-radius:8px;
+  color:white;
+  cursor:pointer;
+}
