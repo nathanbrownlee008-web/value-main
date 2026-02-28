@@ -1,13 +1,7 @@
 
 // Safety check: ensure Supabase loaded
 if (typeof window.supabase === "undefined") {
-  document.addEventListener("DOMContentLoaded", function(){
-    const el = document.getElementById("betsStatus");
-    if (el) {
-      el.innerHTML = "<span style='color:#ef4444;font-weight:900'>Supabase library failed to load</span><br>Check CDN connection.";
-    }
-  });
-}
+  }
 
 
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
@@ -82,11 +76,8 @@ function makeClient(){
   });
 }
 
-const client = makeClient();
-
-
-
-      const t = setTimeout(() => controller.abort(), 8000);
+let client = null;
+const t = setTimeout(() => controller.abort(), 8000);
       return fetch(input, { ...init, signal: controller.signal })
         .finally(() => clearTimeout(t));
     }
@@ -721,17 +712,6 @@ function toggleTracker(){
 }
 
 // Restore state on load
-document.addEventListener("DOMContentLoaded",function(){
-  const wrapper=document.getElementById("trackerWrapper");
-  const arrow=document.getElementById("trackerArrow");
-  const open=localStorage.getItem("tracker_open");
-  if(open==="true"){
-    wrapper.classList.remove("collapsed");
-    wrapper.classList.add("expanded");
-    arrow.innerText="▲";
-  }
-});
-
 // Extend loadTracker to update bet count
 const originalLoadTracker = loadTracker;
 loadTracker = async function(){
@@ -973,8 +953,15 @@ if(startingInput){
 
 
 // Ensure bets load on page ready
+
+
 document.addEventListener("DOMContentLoaded", function(){
-  if (typeof loadBets === "function") {
-    loadBets();
+  // Create client only after DOM is ready so we can render status + key UI reliably
+  client = makeClient();
+  if(!client){
+    // makeClient() will show the key UI + status message
+    return;
   }
+  loadBets();
 });
+
