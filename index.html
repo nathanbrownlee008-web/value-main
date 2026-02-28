@@ -4,19 +4,20 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Top Daily Tips</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
 
+
+<button id="authBtn" class="auth-btn">Log in</button>
 <header class="main-header">
 <h1 class="logo-3d">Top Daily Tips</h1>
 <div class="tabs">
 <button id="tabBets" class="active">Value Bets</button>
 <button id="tabTracker">Tracker</button>
 </div>
-<button id="authBtn" class="auth-btn">Log in</button>
 </header>
 
 <section id="betsSection">
@@ -87,41 +88,24 @@
 </section>
 
 <script src="app.js"></script>
-
-<div id="authModal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
-  <div class="modal-backdrop" id="authBackdrop"></div>
-  <div class="modal-card" role="document">
-    <div class="modal-head">
-      <div class="modal-title" id="authTitle">Log in</div>
-      <button class="modal-close" id="authClose" aria-label="Close">✕</button>
+<div id="authModal" class="modal" aria-hidden="true">
+  <div class="modal-card">
+    <button id="authClose" class="modal-close" aria-label="Close">×</button>
+    <h2 id="authTitle">Log in</h2>
+    <label class="field">
+      <span>Email</span>
+      <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email"/>
+    </label>
+    <label class="field">
+      <span>Password</span>
+      <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+    </label>
+    <div class="auth-actions">
+      <button id="authSubmit" class="primary">Log in</button>
+      <button id="authToggle" class="link">Create account</button>
     </div>
-
-    <div class="modal-body">
-      <label class="field">
-        <span>Email</span>
-        <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" />
-      </label>
-
-      <label class="field">
-        <span>Password</span>
-        <input id="authPass" type="password" autocomplete="current-password" placeholder="••••••••" />
-      </label>
-
-      <div class="auth-msg" id="authMsg"></div>
-
-      <button id="authSubmit" class="primary-btn" type="button">Continue</button>
-
-      <div class="auth-switch">
-        <span id="authSwitchText">Don’t have an account?</span>
-        <button id="authToggle" class="link-btn" type="button">Create account</button>
-      </div>
-
-      <div class="auth-note">
-        You only need an account to use the Tracker. Value Bets stay public and read-only.
-      </div>
-    </div>
+    <div id="authMsg" class="auth-msg"></div>
   </div>
 </div>
-
 </body>
 </html>

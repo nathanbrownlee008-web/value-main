@@ -1,7 +1,7 @@
 
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
 const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
-const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const client = window.window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const bankrollElem=document.getElementById("bankroll");
 const profitElem=document.getElementById("profit");
@@ -23,54 +23,40 @@ tabBets.classList.toggle("active",show);
 tabTracker.classList.toggle("active",!show);
 }
 
-
 async function loadBets(){
-  try{
-    const { data, error } = await client.from("value_bets").select("*");
-    if(error) throw error;
-
-    allRows = data || [];
-    applySort();
-    render();
-  }catch(err){
-    console.error("Load bets error:", err);
-    // keep UI helpful
-    betsGrid.innerHTML = '<div class="card">Could not load bets. Check Supabase URL/key and RLS SELECT policy.</div>';
-  }
+const {data}=await client.from("value_bets").select("*").order("value_pct",{ascending:false,nullsFirst:false}).order("created_at",{ascending:false});
+betsGrid.innerHTML="";
+if(!data) return;
+data.forEach(row=>{
+betsGrid.innerHTML+=`
+<div class="card bet-card ${row.high_value ? 'bet-card--hv' : ''}">
+  <h3 class="bet-title">${row.match}</h3>
+  <div class="bet-meta">
+    <span class="bet-market">${row.market}</span>
+    <span class="bet-date">${row.bet_date || (row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : '')}</span>
+  </div>
+  <div class="bet-stats">
+    <span class="stat-chip"><span class="stat-chip__k">Value</span><span class="stat-chip__v">${(row.value_pct ?? row.value_percent ?? row.value_percentage ?? row.value) != null ? Number(row.value_pct ?? row.value_percent ?? row.value_percentage ?? row.value).toFixed(1)+'%' : '—'}</span></span>
+  </div>
+  <div class="bet-footer">
+    <span class="odds-badge">Odds <strong>${row.odds}</strong></span>
+    <button class="bet-btn" onclick='addToTracker(${JSON.stringify(row)})'>Add</button>
+  </div>
+</div>`;
+});
 }
 
-
-async function addToTracker(bet){
-  // Tracker requires login (so every user only writes their own rows)
-  if(!currentUser){
-    setAuthMode("signin");
-    openAuthModal();
-    return;
-  }
-
-  const stake = parseFloat(startingInput.value) > 0 ? parseFloat(startingInput.value) : 0;
-
-  // Build row using columns that exist in your bet_tracker table
-  const payload = {
-    user_id: currentUser.id,
-    bet_id: bet.id,
-    match: bet.match,
-    market: bet.market,
-    odds: bet.odds,
-    stake: bet.stake ?? 0,
-    result: null,
-    match_date: bet.bet_date ?? null,
-  };
-
-  const { error } = await client.from("bet_tracker").insert(payload);
-  if(error){
-    console.error("Insert bet_tracker error:", error);
-    alert("Could not add to tracker: " + (error.message || "Unknown error"));
-    return;
-  }
-  await loadTracker();
+async function addToTracker(row){
+await client.from("bet_tracker").insert({
+match:row.match,
+market:row.market,
+odds:row.odds,
+match_date: row.bet_date,
+stake:10,
+result:"pending"
+});
+loadTracker();
 }
-
 
 // ===== Insights (dropdown) =====
 const insightStore = {
@@ -289,41 +275,60 @@ borderWidth:2,
 });
 }
 
-
 async function loadTracker(){
-  if(!currentUser){
-    // not logged in: show nothing
-    trackerAllRows = [];
-    trackerTable.innerHTML = "";
-    setStats({ totalProfit: 0, totalStake: 0, totalBets: 0 });
-    return;
-  }
-
-  const { data, error } = await client
-    .from("bet_tracker")
-    .select("*")
-    .order("created_at", { ascending: true });
-
-  if(error){
-    console.error("Load tracker error:", error);
-    trackerAllRows = [];
-    trackerTable.innerHTML = "";
-    setStats({ totalProfit: 0, totalStake: 0, totalBets: 0 });
-    return;
-  }
-
-  trackerAllRows = data || [];
-  wireTrackerFilters();
-
-  let start=parseFloat(document.getElementById("startingBankroll").value);
-  if(isNaN(start)) start=0;
-  const filtered = applyTrackerFilters(trackerAllRows);
-
-  const stats = calcStats(filtered, start);
-  setStats(stats);
-  renderTracker(filtered);
+if(!currentUser){
+  // Not logged in: show a friendly message and stop.
+  if(trackerWrap) trackerWrap.innerHTML = "<div class='empty-state'>Log in to use the Tracker.</div>";
+  return;
 }
 
+const {data}=await client.from("bet_tracker").select("*").eq("user_id", currentUser.id).order("created_at",{ascending:true});
+trackerAllRows = data || [];
+wireTrackerFilters();
+
+let start=parseFloat(document.getElementById("startingBankroll").value);
+let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
+
+	let html="<table><tr><th class='date-col'>Date</th><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
+
+data.forEach(row=>{
+let p=0;
+if(row.result==="won"){p=row.stake*(row.odds-1);wins++;}
+if(row.result==="lost"){p=-row.stake;losses++;}
+profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
+bankroll=start+profit;history.push(bankroll);
+
+const gameDate = row.match_date_date || row.bet_date || row.created_at;
+html+=`<tr>
+<td class="date-col">${fmtDayLabel(gameDate)}</td><td>${row.match}</td>
+<td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
+<td>
+<select 
+class="result-select result-${row.result}" 
+onchange="updateResult('${row.id}',this.value)">
+<option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
+<option value="won" ${row.result==="won"?"selected":""}>won</option>
+<option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
+<option value="delete">🗑 delete</option>
+</select>
+</td>
+<td class="profit-col">
+<span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
+</td>
+</tr>`;
+});
+
+html+="</table>";
+trackerTable.innerHTML=html;
+
+bankrollElem.innerText=bankroll.toFixed(2);
+profitElem.innerText=profit.toFixed(2);
+roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
+winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
+const wonLostElem = document.getElementById("wonLost");
+if(wonLostElem){
+  wonLostElem.innerText = `${wins}-${losses}`;
+}
 
 const totalBets = data.length;
 const totalElem = document.getElementById("totalBets");
@@ -470,7 +475,7 @@ a.click();
 });
 }
 
-(async ()=>{ await refreshSession(); await loadBets(); await loadTracker(); })();
+refreshSession().then(()=>{ loadBets(); loadTracker(); });
 
 
 // Toggle with animation + memory
