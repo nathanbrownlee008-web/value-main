@@ -1,160 +1,7 @@
 
-
-
-// Safety check: ensure Supabase loaded
-if (typeof window.supabase === "undefined") {
-  }
-
-
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
-const SUPABASE_KEY = "";
-
-
-
-// ===== Simple on-page status + key setup (no console needed) =====
-function setBetsStatus(html){
-  const el = document.getElementById("betsStatus");
-  if(el) el.innerHTML = html;
-}
-
-function showKeySetup(messageHtml){
-  const box = document.getElementById("keySetup");
-  if(!box) return;
-
-  const currentUrl = (typeof SUPABASE_URL !== "undefined" && SUPABASE_URL) ? SUPABASE_URL : "";
-  const saved = (localStorage.getItem("supabase_anon_key") || "").trim();
-
-  box.style.display = "block";
-  box.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <h4 style="margin:0;">Connect Supabase</h4>
-      <button id="clearAnonKeyBtn" style="padding:7px 10px;border-radius:12px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28);font-weight:900">Clear</button>
-    </div>
-    <div class="muted" style="margin-top:6px">Project URL: <b>${currentUrl || "set in code"}</b></div>
-    <div class="muted" style="margin-top:6px">Paste your <b>anon public key</b> (starts <b>eyJ</b>) from Supabase → Project Settings → API.</div>
-    <input id="anonKeyInput" placeholder="eyJ..." autocomplete="off" style="margin-top:10px" />
-    <div class="row">
-      <button id="saveAnonKeyBtn">Save key</button>
-    </div>
-    ${messageHtml ? `<div class="muted" style="margin-top:8px">${messageHtml}</div>` : ""}
-    ${saved ? `<div class="muted" style="margin-top:6px">Saved key detected ✅</div>` : ""}
-  `;
-
-  document.getElementById("saveAnonKeyBtn")?.addEventListener("click", ()=>{
-    const v = (document.getElementById("anonKeyInput")?.value || "").trim();
-    if(!v){
-      setBetsStatus("<span class='bad'>Missing key</span><br>Please paste the anon public key.");
-      return;
-    }
-    if(v.startsWith("sb_")){
-      setBetsStatus("<span class='bad'>Wrong key</span><br>Don’t use sb_* keys. Use the anon public key (starts eyJ).");
-      return;
-    }
-    localStorage.setItem("supabase_anon_key", v);
-    location.reload();
-  });
-
-  document.getElementById("clearAnonKeyBtn")?.addEventListener("click", ()=>{
-    localStorage.removeItem("supabase_anon_key");
-    location.reload();
-  });
-}
-
-window.addEventListener("error", function(e){
-  showKeySetup("JS error: " + (e.message || "Unknown"));
-});
-window.addEventListener("unhandledrejection", function(e){
-  const r = e.reason;
-  showKeySetup("Request error: " + ((r && (r.message||r.toString())) || "Unknown"));
-});
-
-function setBetsStatus(html){
-  const el = document.getElementById("betsStatus");
-  if(el) el.innerHTML = html;
-}
-
-function showKeySetup(){
-  const box = document.getElementById("keySetup");
-  if(!box) return;
-  box.style.display = "block";
-  box.innerHTML = `
-    <h4>Connect Supabase</h4>
-    <div class="muted">Paste your <b>anon public key</b> from Supabase → <b>Settings → API</b> (it usually starts with <b>eyJ</b>).</div>
-    <div class="muted" style="margin-top:6px">Project URL: <b>${SUPABASE_URL}</b></div>
-    <div style="margin-top:10px">
-      <input id="anonKeyInput" placeholder="eyJ..." autocomplete="off" />
-      <div class="row">
-        <button id="saveAnonKeyBtn">Save key</button>
-        <button id="clearAnonKeyBtn" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28)">Clear</button>
-      </div>
-    </div>
-  `;
-  const saveBtn = document.getElementById("saveAnonKeyBtn");
-  const clearBtn = document.getElementById("clearAnonKeyBtn");
-  saveBtn?.addEventListener("click", ()=>{
-    const v = (document.getElementById("anonKeyInput")?.value || "").trim();
-    if(!v){
-      setBetsStatus('<span class="bad">Missing key</span><br>Please paste the anon public key.');
-      return;
-    }
-    localStorage.setItem("supabase_anon_key", v);
-    location.reload();
-  });
-  clearBtn?.addEventListener("click", ()=>{
-    localStorage.removeItem("supabase_anon_key");
-    location.reload();
-  });
-}
-
-function getAnonKey(){
-  const v = localStorage.getItem("supabase_anon_key");
-  return v ? v.trim() : "";
-}
-
-function getAnonKey(){
-  const v = localStorage.getItem("supabase_anon_key");
-  return v ? v.trim() : "";
-}
-
-function makeClient(){
-  if (typeof window.supabase === "undefined") {
-    showKeySetup("Supabase library not loaded. If you’re on a restrictive network, try mobile data or a different browser.");
-    setBetsStatus("<span class='bad'>Supabase library not loaded</span>");
-    return null;
-  }
-
-  const key = getAnonKey();
-  if(!key){
-    showKeySetup();
-    setBetsStatus("<span class='bad'>Not connected</span><br>Paste anon public key above to load bets.");
-    return null;
-  }
-
-  if(key.startsWith("sb_")){
-    showKeySetup();
-    setBetsStatus("<span class='bad'>Wrong key</span><br>Use anon public key (starts eyJ).");
-    return null;
-  }
-
-  return supabase.createClient(SUPABASE_URL, key, {
-    global: {
-      fetch: (input, init = {}) => {
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), 8000);
-        return fetch(input, { ...init, signal: controller.signal })
-          .finally(() => clearTimeout(t));
-      }
-    }
-  });
-}
-
-let client = null;
-const t = setTimeout(() => controller.abort(), 8000);
-      return fetch(input, { ...init, signal: controller.signal })
-        .finally(() => clearTimeout(t));
-    }
-  }
-});
+const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
+const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 const bankrollElem=document.getElementById("bankroll");
 const profitElem=document.getElementById("profit");
@@ -176,166 +23,24 @@ tabBets.classList.toggle("active",show);
 tabTracker.classList.toggle("active",!show);
 }
 
-
-function setBetsStatus(html){
-  const el = document.getElementById("betsStatus");
-  if(el) el.innerHTML = html;
-}
-let betsAllRows = [];
-
-function _num(v){
-  if(v == null) return NaN;
-  if(typeof v === "number") return v;
-  // handle "12.3%", "12,3", etc.
-  const s = String(v).replace("%","").replace(",","").trim();
-  const n = parseFloat(s);
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function _pickPct(row, keys){
-  for(const k of keys){
-    if(row && row[k] != null && row[k] !== "") return _num(row[k]);
-  }
-  return NaN;
-}
-
-// Try a few possible column names so it works even if your DB column differs
-function rowValuePct(row){
-  return _pickPct(row, ["value_pct","value_percent","value_percentage","value","edge_pct","edge_percent","edge"]);
-}
-function rowProbPct(row){
-  return _pickPct(row, ["probability_pct","probability_percent","probability_percentage","probability","prob_pct","prob"]);
-}
-
-function renderBets(rows){
-  betsGrid.innerHTML = "";
-  (rows || []).forEach(row=>{
-    const v = rowValuePct(row);
-    const p = rowProbPct(row);
-
-    const vText = Number.isFinite(v) ? `${v.toFixed(1)}%` : "—";
-    const pText = Number.isFinite(p) ? `${p.toFixed(1)}%` : "—";
-
-    betsGrid.innerHTML += `
+async function loadBets(){
+const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
+betsGrid.innerHTML="";
+if(!data) return;
+data.forEach(row=>{
+betsGrid.innerHTML+=`
 <div class="card bet-card ${row.high_value ? 'bet-card--hv' : ''}">
   <h3 class="bet-title">${row.match}</h3>
   <div class="bet-meta">
     <span class="bet-market">${row.market}</span>
     <span class="bet-date">${row.bet_date}</span>
   </div>
-
-  <div class="bet-stats">
-    <span class="stat-chip"><span class="stat-chip__k">Value</span><span class="stat-chip__v">${vText}</span></span>
-    <span class="stat-chip"><span class="stat-chip__k">Prob</span><span class="stat-chip__v">${pText}</span></span>
-  </div>
-
   <div class="bet-footer">
     <span class="odds-badge">Odds <strong>${row.odds}</strong></span>
     <button class="bet-btn" onclick='addToTracker(${JSON.stringify(row)})'>Add</button>
   </div>
 </div>`;
-  });
-}
-
-function applyBetsSort(){
-  const sel = document.getElementById("betsSort");
-  const mode = sel ? sel.value : "date_desc";
-
-  const rows = [...(betsAllRows || [])];
-
-  const byDate = (a,b)=>{
-    const da = new Date(a.bet_date || a.created_at || 0).getTime();
-    const db = new Date(b.bet_date || b.created_at || 0).getTime();
-    return da - db;
-  };
-  const byOdds = (a,b)=> (_num(a.odds) - _num(b.odds));
-  const byValue = (a,b)=> (rowValuePct(a) - rowValuePct(b));
-  const byProb  = (a,b)=> (rowProbPct(a) - rowProbPct(b));
-
-  // helper to push NaNs to the bottom always
-  const nanLast = (cmp)=>{
-    return (a,b)=>{
-      const av = cmp === byDate ? new Date(a.bet_date || a.created_at || 0).getTime()
-              : cmp === byOdds ? _num(a.odds)
-              : cmp === byValue ? rowValuePct(a)
-              : rowProbPct(a);
-      const bv = cmp === byDate ? new Date(b.bet_date || b.created_at || 0).getTime()
-              : cmp === byOdds ? _num(b.odds)
-              : cmp === byValue ? rowValuePct(b)
-              : rowProbPct(b);
-      const aNaN = !Number.isFinite(av);
-      const bNaN = !Number.isFinite(bv);
-      if(aNaN && bNaN) return 0;
-      if(aNaN) return 1;
-      if(bNaN) return -1;
-      return cmp(a,b);
-    };
-  };
-
-  if(mode === "date_desc") rows.sort((a,b)=> byDate(b,a));
-  else if(mode === "date_asc") rows.sort(byDate);
-  else if(mode === "odds_desc") rows.sort((a,b)=> nanLast(byOdds)(b,a));
-  else if(mode === "odds_asc") rows.sort(nanLast(byOdds));
-  else if(mode === "value_desc") rows.sort((a,b)=> nanLast(byValue)(b,a));
-  else if(mode === "value_asc") rows.sort(nanLast(byValue));
-  else if(mode === "prob_desc") rows.sort((a,b)=> nanLast(byProb)(b,a));
-  else if(mode === "prob_asc") rows.sort(nanLast(byProb));
-  else rows.sort((a,b)=> byDate(b,a));
-
-  renderBets(rows);
-}
-
-async function loadBets(){
-  if(!client){ return; }
-  try{
-    const keyType = (String(SUPABASE_KEY||"").startsWith("sb_"))
-      ? "sb_* (new key format)"
-      : "JWT (starts eyJ…)";
-
-    setBetsStatus(`Loading bets...<br><span style="opacity:.75">URL:</span> <b>${SUPABASE_URL}</b><br><span style="opacity:.75">Key:</span> <b>${keyType}</b>`);
-
-    // quick connectivity check (no ordering)
-    const ping = await client.from("value_bets").select("id").limit(1);
-    if(ping.error){
-      console.error("ping error:", ping.error);
-      setBetsStatus(`<span class="bad">Supabase error</span><br><b>${ping.error.message || ping.error}</b><br><span style="opacity:.75">Tip:</span> Check Settings → API → Project URL + anon/public key match app.js.`);
-      return;
-    }
-
-    const {data, error} = await client
-      .from("value_bets")
-      .select("*")
-      .order("created_at",{ascending:false});
-
-    if(error){
-      console.error("loadBets error:", error);
-      setBetsStatus(`<span class="bad">Supabase error</span><br><b>${error.message || error}</b>`);
-      betsAllRows = [];
-      renderBets([]);
-      return;
-    }
-
-    betsAllRows = data || [];
-    if(!betsAllRows.length){
-      setBetsStatus(`<span class="bad">No rows returned</span><br>Table: <b>value_bets</b> • URL: <b>${SUPABASE_URL}</b><br><span style="opacity:.75">You have rows in Supabase? Then you’re likely editing a different project or the key doesn’t match this project.</span>`);
-    }else{
-      setBetsStatus(`<span class="ok">Loaded</span> <b>${betsAllRows.length}</b> bet(s) • Sorting: <b>${(document.getElementById("betsSort")?.value)||"date_desc"}</b>`);
-    }
-    applyBetsSort();
-  }catch(err){
-    console.error("loadBets exception:", err);
-    const msg = (err && err.name === "AbortError") ? "Request timed out (8s)" : (err?.message || String(err));
-    setBetsStatus(`<span class="bad">Request failed</span><br><b>${msg}</b><br><span style="opacity:.75">Tip:</span> If it times out, your URL/key is wrong or the network is blocking Supabase.`);
-  }
-}
-
-// wire sort dropdown
-document.addEventListener("change", (e)=>{
-  if(e.target && e.target.id === "betsSort"){
-    applyBetsSort();
-  }
 });
-);
 }
 
 async function addToTracker(row){
@@ -784,6 +489,17 @@ function toggleTracker(){
 }
 
 // Restore state on load
+document.addEventListener("DOMContentLoaded",function(){
+  const wrapper=document.getElementById("trackerWrapper");
+  const arrow=document.getElementById("trackerArrow");
+  const open=localStorage.getItem("tracker_open");
+  if(open==="true"){
+    wrapper.classList.remove("collapsed");
+    wrapper.classList.add("expanded");
+    arrow.innerText="▲";
+  }
+});
+
 // Extend loadTracker to update bet count
 const originalLoadTracker = loadTracker;
 loadTracker = async function(){
@@ -1022,14 +738,3 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
-
-
-// Ensure bets load on page ready
-
-
-document.addEventListener("DOMContentLoaded", function(){
-  showKeySetup();
-  client = makeClient();
-  if(!client){ return; }
-  loadBets();
-});
