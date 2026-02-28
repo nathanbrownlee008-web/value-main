@@ -627,3 +627,18 @@ th{text-align:left}
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
+
+/* ===== Debug / status banner ===== */
+.bets-status{
+  margin: 6px 0 10px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(226,232,240,0.92);
+}
+.bets-status b{ color: #fff; }
+.bets-status .ok{ color: #22c55e; font-weight: 900; }
+.bets-status .bad{ color: #ef4444; font-weight: 900; }

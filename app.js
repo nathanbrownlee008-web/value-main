@@ -23,6 +23,11 @@ tabBets.classList.toggle("active",show);
 tabTracker.classList.toggle("active",!show);
 }
 
+
+function setBetsStatus(html){
+  const el = document.getElementById("betsStatus");
+  if(el) el.innerHTML = html;
+}
 let betsAllRows = [];
 
 function _num(v){
@@ -128,9 +133,32 @@ function applyBetsSort(){
 }
 
 async function loadBets(){
-  const {data}=await client.from("value_bets").select("*").order("created_at", { ascending: false });
-  betsAllRows = data || [];
-  applyBetsSort();
+  try{
+    setBetsStatus(`Loading bets…<br><span style="opacity:.75">URL:</span> <b>${SUPABASE_URL}</b>`);
+    const {data, error} = await client
+      .from("value_bets")
+      .select("*")
+      .order("created_at",{ascending:false});
+
+    if(error){
+      console.error("loadBets error:", error);
+      setBetsStatus(`<span class="bad">Supabase error</span><br><b>${error.message || error}</b>`);
+      betsAllRows = [];
+      renderBets([]);
+      return;
+    }
+
+    betsAllRows = data || [];
+    if(!betsAllRows.length){
+      setBetsStatus(`<span class="bad">No rows returned</span><br>Table: <b>value_bets</b> • URL: <b>${SUPABASE_URL}</b><br><span style="opacity:.75">If you see rows in Supabase, you’re likely editing a different project (URL mismatch) or the table name differs.</span>`);
+    }else{
+      setBetsStatus(`<span class="ok">Loaded</span> <b>${betsAllRows.length}</b> bet(s) • Sorting: <b>${(document.getElementById("betsSort")?.value)||"date_desc"}</b>`);
+    }
+    applyBetsSort();
+  }catch(err){
+    console.error("loadBets exception:", err);
+    setBetsStatus(`<span class="bad">JS exception</span><br><b>${err?.message || err}</b>`);
+  }
 }
 
 // wire sort dropdown
