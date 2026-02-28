@@ -1,1040 +1,456 @@
+// Top Daily Tips (static) + Supabase Auth + RLS-friendly tracker
+// IMPORTANT: Paste your own values below (keep the quotes)
+const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
 
-const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtybW1tdXRjZWpuemRmdXBleHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTAxMTksImV4cCI6MjA4NzI4NjExOX0.SlEqBr6yZkSEUZo2-XG-7-H0qHpKjQDL7VtN509GzDQ";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== Supabase client =====
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ----------------------
+// Elements
+// ----------------------
+const el = (id) => document.getElementById(id);
 
-// ===== Auth (Email + Password) =====
+const betsContainer = el("betsContainer");
+const tabBtns = Array.from(document.querySelectorAll(".tab-btn"));
+const sortSelect = el("sortSelect");
+
+const authBtn = el("authBtn");
+const authModal = el("authModal");
+const authBackdrop = el("authBackdrop");
+const authClose = el("authClose");
+const authTitle = el("authTitle");
+const authHint = el("authHint");
+const authEmail = el("authEmail");
+const authPass = el("authPass");
+const authSubmit = el("authSubmit");
+const authToggle = el("authToggle");
+const authMsg = el("authMsg");
+
+const totalProfitEl = el("totalProfit");
+const totalStakeEl = el("totalStake");
+const totalBetsEl = el("totalBets");
+const betCountEl = el("betCount");
+const trackerWrapper = el("trackerWrapper");
+const trackerArrow = el("trackerArrow");
+const trackerTable = el("trackerTable");
+
+const monthlyWrapper = el("monthlyWrapper");
+const monthlyArrow = el("monthlyArrow");
+const monthlyTable = el("monthlyTable");
+
+// ----------------------
+// State
+// ----------------------
 let authMode = "signin"; // signin | signup
-let pendingAddRow = null;
+let currentUser = null;
+let currentTab = "value"; // value | tracker
+let currentSort = "date_desc";
 
-function el(id){ return document.getElementById(id); }
-
-function openAuth(){
-  const m = el("authModal");
-  if(!m) return;
-  m.style.display = "block";
-  m.setAttribute("aria-hidden","false");
-  renderAuthMode();
-  setAuthMsg("");
+// ----------------------
+// Modal helpers
+// ----------------------
+function openAuthModal() {
+  authMsg.textContent = "";
+  authEmail.value = authEmail.value || "";
+  authPass.value = "";
+  authModal.style.display = "block";
+  authModal.setAttribute("aria-hidden", "false");
 }
 
-function closeAuth(){
-  const m = el("authModal");
-  if(!m) return;
-  m.style.display = "none";
-  m.setAttribute("aria-hidden","true");
+function closeAuthModal() {
+  authModal.style.display = "none";
+  authModal.setAttribute("aria-hidden", "true");
+  authMsg.textContent = "";
 }
 
-function setAuthMsg(msg, type){
-  const box = el("authMsg");
-  if(!box) return;
-  box.className = "auth-msg" + (type ? (" " + type) : "");
-  box.innerHTML = msg || "";
+function setAuthMode(mode) {
+  authMode = mode;
+  const isSignIn = mode === "signin";
+  authTitle.textContent = isSignIn ? "Log in" : "Create account";
+  authSubmit.textContent = isSignIn ? "Log in" : "Sign up";
+  authToggle.textContent = isSignIn ? "Create account" : "I already have an account";
+  authHint.textContent = isSignIn
+    ? "Use email + password."
+    : "Create an account with email + password.";
+  authMsg.textContent = "";
 }
 
-function renderAuthMode(){
-  const title = el("authTitle");
-  const btn = el("authSubmit");
-  const toggle = el("authToggle");
-  const hint = el("authHint");
-  if(title) title.textContent = (authMode === "signup") ? "Create account" : "Log in";
-  if(btn) btn.textContent = (authMode === "signup") ? "Sign up" : "Log in";
-  if(toggle) toggle.textContent = (authMode === "signup") ? "I already have an account" : "Create account";
-  if(hint) hint.textContent = (authMode === "signup")
-    ? "Create an account with email + password."
-    : "Log in with your email + password.";
+// ----------------------
+// Auth
+// ----------------------
+async function refreshSession() {
+  const { data } = await supabase.auth.getSession();
+  currentUser = data.session?.user || null;
+  updateAuthUI();
 }
 
-async function refreshAuthButton(){
-  const btn = el("authBtn");
-  if(!btn) return;
-  const { data } = await client.auth.getSession();
-  if(data && data.session){
-    btn.textContent = "Log out";
-  } else {
-    btn.textContent = "Log in";
-  }
+function updateAuthUI() {
+  if (!authBtn) return;
+  authBtn.textContent = currentUser ? "Log out" : "Log in";
 }
 
-async function handleAuthSubmit(){
-  const email = (el("authEmail")?.value || "").trim();
-  const password = (el("authPass")?.value || "").trim();
-  if(!email || !password){
-    setAuthMsg("Enter email + password.", "bad");
+async function handleAuthButton() {
+  if (!currentUser) {
+    setAuthMode("signin");
+    openAuthModal();
     return;
   }
-  setAuthMsg("Working…");
-  try{
-    let res;
-    if(authMode === "signup"){
-      res = await client.auth.signUp({ email, password });
-    }else{
-      res = await client.auth.signInWithPassword({ email, password });
-    }
-    if(res.error){
-      setAuthMsg(res.error.message, "bad");
-      return;
-    }
-    setAuthMsg("Success ✅", "ok");
-    await refreshAuthButton();
-    if(pendingAddRow){
-      const row = pendingAddRow;
-      pendingAddRow = null;
-      closeAuth();
-      await addToTracker(row, true);
-      return;
-    }
-    closeAuth();
-  }catch(e){
-    setAuthMsg((e && e.message) ? e.message : String(e), "bad");
-  }
+  await supabase.auth.signOut();
+  await refreshSession();
+  // Clear tracker UI
+  trackerTable.innerHTML = "";
+  setStats({ totalProfit: 0, totalStake: 0, totalBets: 0 });
 }
 
-document.addEventListener("DOMContentLoaded", async ()=>{
-  el("authBtn")?.addEventListener("click", async ()=>{
-    const { data } = await client.auth.getSession();
-    if(data && data.session){
-      await client.auth.signOut();
-      await refreshAuthButton();
-      if(typeof loadTracker === "function") loadTracker();
+async function submitAuth() {
+  const email = authEmail.value.trim();
+  const password = authPass.value;
+  authMsg.textContent = "";
+
+  if (!email || !password) {
+    authMsg.textContent = "Please enter email + password.";
+    return;
+  }
+
+  try {
+    if (authMode === "signin") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      closeAuthModal();
+      await refreshSession();
+      if (currentTab === "tracker") await loadTracker();
     } else {
-      openAuth();
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      authMsg.textContent = "Signed up. If email confirmation is ON, check your inbox.";
+      // user may not be logged in until confirmed
+      await refreshSession();
     }
-  });
-  el("authClose")?.addEventListener("click", closeAuth);
-  el("authBackdrop")?.addEventListener("click", closeAuth);
-  el("authToggle")?.addEventListener("click", ()=>{
-    authMode = (authMode === "signup") ? "signin" : "signup";
-    renderAuthMode();
-    setAuthMsg("");
-  });
-  el("authSubmit")?.addEventListener("click", handleAuthSubmit);
-
-  await refreshAuthButton();
-  client.auth.onAuthStateChange(async ()=>{ await refreshAuthButton(); });
-});
-
-
-const t = setTimeout(() => controller.abort(), 8000);
-      return fetch(input, { ...init, signal: controller.signal })
-        .finally(() => clearTimeout(t));
-    }
-  }
-});
-
-const bankrollElem=document.getElementById("bankroll");
-const profitElem=document.getElementById("profit");
-const roiElem=document.getElementById("roi");
-const winrateElem=document.getElementById("winrate");
-const winsElem=document.getElementById("wins");
-const lossesElem=document.getElementById("losses");
-const avgOddsElem=document.getElementById("avgOdds");
-const profitCard=document.getElementById("profitCard");
-
-tabBets.onclick=()=>switchTab(true);
-tabTracker.onclick=()=>switchTab(false);
-
-function switchTab(show){
-  initChartTabs();
-betsSection.style.display=show?"block":"none";
-trackerSection.style.display=show?"none":"block";
-tabBets.classList.toggle("active",show);
-tabTracker.classList.toggle("active",!show);
-}
-
-
-function setBetsStatus(html){
-  const el = document.getElementById("betsStatus");
-  if(el) el.innerHTML = html;
-}
-let betsAllRows = [];
-
-function _num(v){
-  if(v == null) return NaN;
-  if(typeof v === "number") return v;
-  // handle "12.3%", "12,3", etc.
-  const s = String(v).replace("%","").replace(",","").trim();
-  const n = parseFloat(s);
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function _pickPct(row, keys){
-  for(const k of keys){
-    if(row && row[k] != null && row[k] !== "") return _num(row[k]);
-  }
-  return NaN;
-}
-
-// Try a few possible column names so it works even if your DB column differs
-function rowValuePct(row){
-  return _pickPct(row, ["value_pct","value_percent","value_percentage","value","edge_pct","edge_percent","edge"]);
-}
-function rowProbPct(row){
-  return _pickPct(row, ["probability_pct","probability_percent","probability_percentage","probability","prob_pct","prob"]);
-}
-
-function renderBets(rows){
-  betsGrid.innerHTML = "";
-  (rows || []).forEach(row=>{
-    const v = rowValuePct(row);
-    const p = rowProbPct(row);
-
-    const vText = Number.isFinite(v) ? `${v.toFixed(1)}%` : "—";
-    const pText = Number.isFinite(p) ? `${p.toFixed(1)}%` : "—";
-
-    betsGrid.innerHTML += `
-<div class="card bet-card ${row.high_value ? 'bet-card--hv' : ''}">
-  <h3 class="bet-title">${row.match}</h3>
-  <div class="bet-meta">
-    <span class="bet-market">${row.market}</span>
-    <span class="bet-date">${row.bet_date}</span>
-  </div>
-
-  <div class="bet-stats">
-    <span class="stat-chip"><span class="stat-chip__k">Value</span><span class="stat-chip__v">${vText}</span></span>
-    <span class="stat-chip"><span class="stat-chip__k">Prob</span><span class="stat-chip__v">${pText}</span></span>
-  </div>
-
-  <div class="bet-footer">
-    <span class="odds-badge">Odds <strong>${row.odds}</strong></span>
-    <button class="bet-btn" onclick='addToTracker(${JSON.stringify(row)})'>Add</button>
-  </div>
-</div>`;
-  });
-}
-
-function applyBetsSort(){
-  const sel = document.getElementById("betsSort");
-  const mode = sel ? sel.value : "date_desc";
-
-  const rows = [...(betsAllRows || [])];
-
-  const byDate = (a,b)=>{
-    const da = new Date(a.bet_date || a.created_at || 0).getTime();
-    const db = new Date(b.bet_date || b.created_at || 0).getTime();
-    return da - db;
-  };
-  const byOdds = (a,b)=> (_num(a.odds) - _num(b.odds));
-  const byValue = (a,b)=> (rowValuePct(a) - rowValuePct(b));
-  const byProb  = (a,b)=> (rowProbPct(a) - rowProbPct(b));
-
-  // helper to push NaNs to the bottom always
-  const nanLast = (cmp)=>{
-    return (a,b)=>{
-      const av = cmp === byDate ? new Date(a.bet_date || a.created_at || 0).getTime()
-              : cmp === byOdds ? _num(a.odds)
-              : cmp === byValue ? rowValuePct(a)
-              : rowProbPct(a);
-      const bv = cmp === byDate ? new Date(b.bet_date || b.created_at || 0).getTime()
-              : cmp === byOdds ? _num(b.odds)
-              : cmp === byValue ? rowValuePct(b)
-              : rowProbPct(b);
-      const aNaN = !Number.isFinite(av);
-      const bNaN = !Number.isFinite(bv);
-      if(aNaN && bNaN) return 0;
-      if(aNaN) return 1;
-      if(bNaN) return -1;
-      return cmp(a,b);
-    };
-  };
-
-  if(mode === "date_desc") rows.sort((a,b)=> byDate(b,a));
-  else if(mode === "date_asc") rows.sort(byDate);
-  else if(mode === "odds_desc") rows.sort((a,b)=> nanLast(byOdds)(b,a));
-  else if(mode === "odds_asc") rows.sort(nanLast(byOdds));
-  else if(mode === "value_desc") rows.sort((a,b)=> nanLast(byValue)(b,a));
-  else if(mode === "value_asc") rows.sort(nanLast(byValue));
-  else if(mode === "prob_desc") rows.sort((a,b)=> nanLast(byProb)(b,a));
-  else if(mode === "prob_asc") rows.sort(nanLast(byProb));
-  else rows.sort((a,b)=> byDate(b,a));
-
-  renderBets(rows);
-}
-
-async function loadBets(){
-  try{
-    const keyType = (String(SUPABASE_KEY||"").startsWith("sb_"))
-      ? "sb_* (new key format)"
-      : "JWT (starts eyJ…)";
-
-    setBetsStatus(`Loading bets...<br><span style="opacity:.75">URL:</span> <b>${SUPABASE_URL}</b><br><span style="opacity:.75">Key:</span> <b>${keyType}</b>`);
-
-    // quick connectivity check (no ordering)
-    const ping = await client.from("value_bets").select("id").limit(1);
-    if(ping.error){
-      console.error("ping error:", ping.error);
-      setBetsStatus(`<span class="bad">Supabase error</span><br><b>${ping.error.message || ping.error}</b><br><span style="opacity:.75">Tip:</span> Check Settings → API → Project URL + anon/public key match app.js.`);
-      return;
-    }
-
-    const {data, error} = await client
-      .from("value_bets")
-      .select("*")
-      .order("created_at",{ascending:false});
-
-    if(error){
-      console.error("loadBets error:", error);
-      setBetsStatus(`<span class="bad">Supabase error</span><br><b>${error.message || error}</b>`);
-      betsAllRows = [];
-      renderBets([]);
-      return;
-    }
-
-    betsAllRows = data || [];
-    if(!betsAllRows.length){
-      setBetsStatus(`<span class="bad">No rows returned</span><br>Table: <b>value_bets</b> • URL: <b>${SUPABASE_URL}</b><br><span style="opacity:.75">You have rows in Supabase? Then you’re likely editing a different project or the key doesn’t match this project.</span>`);
-    }else{
-      setBetsStatus(`<span class="ok">Loaded</span> <b>${betsAllRows.length}</b> bet(s) • Sorting: <b>${(document.getElementById("betsSort")?.value)||"date_desc"}</b>`);
-    }
-    applyBetsSort();
-  }catch(err){
-    console.error("loadBets exception:", err);
-    const msg = (err && err.name === "AbortError") ? "Request timed out (8s)" : (err?.message || String(err));
-    setBetsStatus(`<span class="bad">Request failed</span><br><b>${msg}</b><br><span style="opacity:.75">Tip:</span> If it times out, your URL/key is wrong or the network is blocking Supabase.`);
+  } catch (e) {
+    authMsg.textContent = e?.message || "Auth error";
   }
 }
 
-// wire sort dropdown
-document.addEventListener("change", (e)=>{
-  if(e.target && e.target.id === "betsSort"){
-    applyBetsSort();
-  }
-});
-);
-}
-
-async function addToTracker(row, _skipAuth){
-  try{
-    const { data } = await client.auth.getUser();
-    const user = data && data.user ? data.user : null;
-
-    if(!user && !_skipAuth){
-      pendingAddRow = row;
-      openAuth();
-      setAuthMsg("Please log in to add bets to your tracker.", "bad");
-      return;
-    }
-    if(!user){
-      setAuthMsg("Not logged in.", "bad");
-      return;
-    }
-
-    const payload = {
-      user_id: user.id,
-      match: row.match,
-      market: row.market,
-      odds: row.odds,
-      match_date_date: row.bet_date || row.match_date_date || null,
-      stake: 10,
-      result: "pending"
-    };
-
-    const { error } = await client.from("bet_tracker").insert(payload);
-    if(error){
-      console.error(error);
-      alert("Could not add to tracker: " + error.message);
-      return;
-    }
-    alert("Added to tracker ✅");
-    if(typeof loadTracker === "function") loadTracker();
-  }catch(e){
-    console.error(e);
-    alert("Could not add to tracker.");
-  }
-});
-loadTracker();
-}
-
-// ===== Insights (dropdown) =====
-const insightStore = {
-  bestMarket: { label: "Best Market", value: "—" },
-  worstMarket: { label: "Worst Market", value: "—" },
-  bestMonth:  { label: "Best Month",  value: "—" },
-  worstMonth: { label: "Worst Month", value: "—" },
-};
-
-function setInsight(key, value){
-  if(!insightStore[key]) return;
-  insightStore[key].value = value;
-  const hidden = document.getElementById(key);
-  if(hidden) hidden.textContent = value;
-}
-
-function updateInsightUI(){
-  const sel = document.getElementById("insightSelect");
-  const labelEl = document.getElementById("insightLabel");
-  const valueEl = document.getElementById("insightValue");
-  if(!sel || !labelEl || !valueEl) return;
-  const key = sel.value || "bestMarket";
-  labelEl.textContent = insightStore[key]?.label || "Insights";
-  valueEl.textContent = insightStore[key]?.value || "—";
-}
-
-document.addEventListener("change", (e)=>{
-  if(e.target && e.target.id === "insightSelect"){
-    updateInsightUI();
-  }
-});
-
-
-// ===== Tracker Filters (Bet Results) =====
-let trackerAllRows = [];
-
-function _rowGameDateISO(row){
-  const raw = row.match_date_date || row.match_date || row.bet_date || row.created_at;
-  if(!raw) return "";
-  const d = new Date(raw);
-  if(isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0,10); // YYYY-MM-DD
-}
-
-function _applyTrackerFilters(rows){
-  const dateEl = document.getElementById("filterDate");
-  const marketEl = document.getElementById("filterMarket");
-  const dateVal = dateEl ? (dateEl.value || "") : "";
-  const marketVal = marketEl ? (marketEl.value || "").trim().toLowerCase() : "";
-
-  return (rows || []).filter(r=>{
-    // date filter
-    if(dateVal){
-      const iso = _rowGameDateISO(r);
-      if(iso !== dateVal) return false;
-    }
-    // market filter (matches market OR match text)
-    if(marketVal){
-      const m = (r.market || "").toLowerCase();
-      const match = (r.match || "").toLowerCase();
-      if(!m.includes(marketVal) && !match.includes(marketVal)) return false;
-    }
-    return true;
-  });
-}
-
-function _buildTrackerTableHTML(rows){
-  let html = `<table>
-    <tr>
-      <th>Date</th>
-      <th>Match</th>
-      <th>Stake</th>
-      <th>Result</th>
-      <th class="profit-col">Profit</th>
-    </tr>`;
-  (rows || []).forEach(row=>{
-    const stakeVal = row.stake ?? 0;
-    const res = row.result || "pending";
-    let profit = 0;
-    if(res === "won") profit = (row.profit != null ? row.profit : row.stake * (row.odds - 1));
-    if(res === "lost") profit = (row.profit != null ? row.profit : -row.stake);
-    if(res === "pending") profit = 0;
-
-    const profitClass = profit >= 0 ? "profit-win" : "profit-loss";
-    const profitText = (profit >= 0 ? `£${profit.toFixed(2)}` : `£${profit.toFixed(2)}`);
-
-    const dateLabel = fmtLabel(row.match_date_date || row.match_date || row.bet_date || row.created_at);
-
-    html += `<tr>
-      <td class="date-col">${dateLabel}</td>
-      <td>${row.match || ""}</td>
-      <td><input class="stake-input" type="number" value="${stakeVal}" data-id="${row.id}" data-field="stake"></td>
-      <td>
-        <select class="result-select result-${res}" data-id="${row.id}" data-field="result">
-          <option value="pending" ${res==="pending"?"selected":""}>pending</option>
-          <option value="won" ${res==="won"?"selected":""}>won</option>
-          <option value="lost" ${res==="lost"?"selected":""}>lost</option>
-        </select>
-      </td>
-      <td class="profit-col ${profitClass}">${profitText}</td>
-    </tr>`;
-  });
-  html += `</table>`;
-  return html;
-}
-
-function _renderFilteredTrackerTable(){
-  const tableEl = document.getElementById("trackerTable");
-  const countEl = document.getElementById("betCount");
-  if(!tableEl) return;
-
-  const filtered = _applyTrackerFilters(trackerAllRows);
-  tableEl.innerHTML = _buildTrackerTableHTML(filtered);
-  if(countEl) countEl.textContent = filtered.length;
-
-  // re-bind inline input/select listeners for edited rows
-  bindTrackerTableInputs();
-}
-
-let _filtersWired = false;
-function wireTrackerFilters(){
-  if(_filtersWired) return;
-  _filtersWired = true;
-
-  const dateEl = document.getElementById("filterDate");
-  const marketEl = document.getElementById("filterMarket");
-  const todayBtn = document.getElementById("todayToggle");
-  const clearBtn = document.getElementById("clearFilters");
-
-  if(dateEl) dateEl.addEventListener("change", _renderFilteredTrackerTable);
-  if(marketEl) marketEl.addEventListener("input", _renderFilteredTrackerTable);
-
-  if(todayBtn){
-    todayBtn.addEventListener("click", ()=>{
-      if(dateEl){
-        const today = new Date();
-        dateEl.value = today.toISOString().slice(0,10);
-      }
-      _renderFilteredTrackerTable();
-    });
-  }
-
-  if(clearBtn){
-    clearBtn.addEventListener("click", ()=>{
-      if(dateEl) dateEl.value = "";
-      if(marketEl) marketEl.value = "";
-      _renderFilteredTrackerTable();
-    });
-  }
-}
-
-let dailyChart;
-let monthlyChart;
-let marketChart;
-
-function fmtDayLabel(d){
-  if(!d) return "";
-  const dt = new Date(d);
-  if(Number.isNaN(dt.getTime())) return String(d);
-  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-}
-
-function isEndOfDay(index, labels){
-  if(!labels || !labels.length) return false;
-  if(index === labels.length - 1) return true;
-  return labels[index] !== labels[index + 1];
-}
-
-function renderDailyChart(history, labels){
-if(dailyChart) dailyChart.destroy();
-const ctx=document.getElementById("chart").getContext("2d");
-dailyChart=new Chart(ctx,{
-type:"line",
-data:{
-labels:(labels && labels.length===history.length) ? labels : history.map((_,i)=>i+1),
-datasets:[{
-data:history,
-tension:0.25,
-fill:true,
-backgroundColor:"rgba(34,197,94,0.08)",
-borderColor:"#22c55e",
-borderWidth:2,
-	// Show dots ONLY on the last point of each day
-	pointRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 5 : 0,
-	pointHoverRadius:(c)=> isEndOfDay(c.dataIndex, labels) ? 7 : 0,
-	pointBackgroundColor:"#22c55e",
-	pointBorderWidth:0
-}]
-},
-	options:{
-	  responsive:true,
-	  maintainAspectRatio:false,
-	  interaction:{ mode:"nearest", intersect:true },
-	  scales:{
-	    y:{ ticks:{ callback:(v)=> `£${v}` } },
-	    x:{
-	      ticks:{
-	        callback:function(value, index){
-	          const label = this.getLabelForValue(value);
-	          if(index === 0) return label;
-	          return label !== labels[index - 1] ? label : "";
-	        }
-	      }
-	    }
-	  },
-	  plugins:{
-	    legend:{display:false},
-	    tooltip:{
-	      enabled:true,
-	      callbacks:{
-	        label:(ctx)=> `£${Number(ctx.parsed.y).toFixed(2)}`
-	      }
-	    }
-	  }
-	}
-});
-}
-
-async function loadTracker(){
-const {data}=await client.from("bet_tracker").select("*").order("created_at",{ascending:true});
-trackerAllRows = data || [];
-wireTrackerFilters();
-
-let start=parseFloat(document.getElementById("startingBankroll").value);
-let bankroll=start,profit=0,wins=0,losses=0,totalStake=0,totalOdds=0,history=[];
-
-	let html="<table><tr><th class='date-col'>Date</th><th>Match</th><th>Stake</th><th>Result</th><th class='profit-col'>Profit</th></tr>";
-
-data.forEach(row=>{
-let p=0;
-if(row.result==="won"){p=row.stake*(row.odds-1);wins++;}
-if(row.result==="lost"){p=-row.stake;losses++;}
-profit+=p;totalStake+=row.stake;totalOdds+=row.odds;
-bankroll=start+profit;history.push(bankroll);
-
-const gameDate = row.match_date_date || row.bet_date || row.created_at;
-html+=`<tr>
-<td class="date-col">${fmtDayLabel(gameDate)}</td><td>${row.match}</td>
-<td><input type="number" value="${row.stake}" onchange="updateStake('${row.id}',this.value)"></td>
-<td>
-<select 
-class="result-select result-${row.result}" 
-onchange="updateResult('${row.id}',this.value)">
-<option value="pending" ${row.result==="pending"?"selected":""}>pending</option>
-<option value="won" ${row.result==="won"?"selected":""}>won</option>
-<option value="lost" ${row.result==="lost"?"selected":""}>lost</option>
-<option value="delete">🗑 delete</option>
-</select>
-</td>
-<td class="profit-col">
-<span class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</span>
-</td>
-</tr>`;
-});
-
-html+="</table>";
-trackerTable.innerHTML=html;
-
-bankrollElem.innerText=bankroll.toFixed(2);
-profitElem.innerText=profit.toFixed(2);
-roiElem.innerText=totalStake?((profit/totalStake)*100).toFixed(1):0;
-winrateElem.innerText=(wins+losses)?((wins/(wins+losses))*100).toFixed(1):0;
-const wonLostElem = document.getElementById("wonLost");
-if(wonLostElem){
-  wonLostElem.innerText = `${wins}-${losses}`;
-}
-
-const totalBets = data.length;
-const totalElem = document.getElementById("totalBets");
-if(totalElem) totalElem.innerText = totalBets;
-const totalStakedCard = document.getElementById("totalStakedCard");
-if(totalStakedCard){
-  totalStakedCard.innerText = totalStake.toFixed(2);
-}
-
-
-avgOddsElem.innerText=data.length?(totalOdds/data.length).toFixed(2):0;
-
-profitCard.classList.remove("glow-green","glow-red");
-if(profit>0) profitCard.classList.add("glow-green");
-if(profit<0) profitCard.classList.add("glow-red");
-
-
-// Daily labels based on the *game* date when available
-const dailyLabels = data.map(r => fmtDayLabel(r.match_date_date || r.bet_date || r.created_at));
-renderDailyChart(history, dailyLabels);
-
-// ---- Monthly & Market analytics (tabs + mini summary) ----
-const countElem = document.getElementById("betCount");
-if(countElem) countElem.textContent = String(data.length);
-
-// Monthly profit aggregation (ROI version)
-const monthMap = {};
-const monthStakeMap = {};
-
-data.forEach(r=>{
-  const d = new Date(r.created_at);
-  const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-  monthMap[key] = (monthMap[key]||0) + rowProfit(r);
-  monthStakeMap[key] = (monthStakeMap[key]||0) + r.stake;
-});
-
-const monthKeys = Object.keys(monthMap).sort();
-
-const monthLabels = monthKeys.map(k=>{
-  const [y,m]=k.split("-");
-  return new Date(parseInt(y), parseInt(m)-1, 1)
-    .toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
-});
-
-const monthlyProfit = monthKeys.map(k=> monthMap[k]);
-const monthlyROI = monthKeys.map(k=>{
-  const stake = monthStakeMap[k] || 0;
-  return stake ? (monthMap[k] / stake) * 100 : 0;
-});
-
-renderMonthlyChart(monthlyProfit, monthlyROI, monthLabels);
-
-  let breakdownHTML = "<table><tr><th>Month</th><th>Profit</th><th>ROI</th></tr>";
-  monthKeys.forEach((k,i)=>{
-    const p = monthlyProfit[i];
-    const r = monthlyROI[i];
-    breakdownHTML += `<tr>
-      <td>${monthLabels[i]}</td>
-      <td class="${p>0?'profit-win':p<0?'profit-loss':''}">£${p.toFixed(2)}</td>
-      <td>${r.toFixed(1)}%</td>
-    </tr>`;
-  });
-  breakdownHTML += "</table>";
-  const tableEl = document.getElementById("monthlyTable");
-  if(tableEl) tableEl.innerHTML = breakdownHTML;
-
-// Market profit aggregation
-const marketMap = {};
-const marketWL = {}; // {market:{wins,losses,pending,bets}}
-data.forEach(r=>{
-  const mk = (r.market && String(r.market).trim()) ? String(r.market).trim() : "Unknown";
-  marketMap[mk] = (marketMap[mk]||0) + rowProfit(r);
-
-  if(!marketWL[mk]) marketWL[mk] = {wins:0,losses:0,pending:0,bets:0};
-  marketWL[mk].bets += 1;
-  const res = (r.result || "pending").toLowerCase();
-  if(res === "won") marketWL[mk].wins += 1;
-  else if(res === "lost") marketWL[mk].losses += 1;
-  else marketWL[mk].pending += 1;
-});
-
-// Build win% series (resolved only); show top 8 by bet count
-let entries = Object.entries(marketWL);
-entries.sort((a,b)=>(b[1].bets)-(a[1].bets));
-entries = entries.slice(0,8);
-
-const labels = entries.map(e=>e[0]);
-const totals = entries.map(e=>({ bets:e[1].bets, wins:e[1].wins, losses:e[1].losses }));
-const winPct = entries.map(e=>{
-  const resolved = e[1].wins + e[1].losses;
-  return resolved ? (e[1].wins / resolved) * 100 : 0;
-});
-renderMarketChart(labels, winPct, totals);
-
-// Mini summary
-if(entries.length){
-  const bestM = [...Object.entries(marketMap)].sort((a,b)=>b[1]-a[1])[0];
-  const worstM = [...Object.entries(marketMap)].sort((a,b)=>a[1]-b[1])[0];
-  setMiniValue("bestMarket", bestM[0]+":", (bestM[1] >= 0 ? "+£" : "-£") + Math.abs(bestM[1]).toFixed(2));
-  setMiniValue("worstMarket", worstM[0]+":", (worstM[1] >= 0 ? "+£" : "-£") + Math.abs(worstM[1]).toFixed(2));
-}
-if(monthKeys.length){
-  const monthEntries = monthKeys.map(k=>[k, monthMap[k]]);
-  const bestMo = [...monthEntries].sort((a,b)=>b[1]-a[1])[0];
-  const worstMo = [...monthEntries].sort((a,b)=>a[1]-b[1])[0];
-  const fmtMonth = (k)=>{
-    const [y,m]=k.split("-");
-    return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('en-GB',{month:'short', year:'2-digit'});
-  };
-  setMiniValue("bestMonth", fmtMonth(bestMo[0])+":", (bestMo[1] >= 0 ? "+£" : "-£") + Math.abs(bestMo[1]).toFixed(2));
-  setMiniValue("worstMonth", fmtMonth(worstMo[0])+":", (worstMo[1] >= 0 ? "+£" : "-£") + Math.abs(worstMo[1]).toFixed(2));
-}
-
-}
-
-
-async function updateStake(id,val){
-await client.from("bet_tracker").update({stake:parseFloat(val)}).eq("id",id);
-loadTracker();
-}
-
-async function updateResult(id,val){
-if(val==="delete"){
-if(!confirm("Delete this bet?")){loadTracker();return;}
-await client.from("bet_tracker").delete().eq("id",id);
-}else{
-await client.from("bet_tracker").update({result:val}).eq("id",id);
-}
-loadTracker();
-}
-
-function exportCSV(){
-client.from("bet_tracker").select("*").then(({data})=>{
-let csv="match,market,odds,stake,result\n";
-data.forEach(r=>{
-csv+=`${r.match},${r.market},${r.odds},${r.stake},${r.result}\n`;
-});
-const blob=new Blob([csv],{type:"text/csv"});
-const url=URL.createObjectURL(blob);
-const a=document.createElement("a");
-a.href=url;
-a.download="bet_tracker.csv";
-a.click();
-});
-}
-
-loadBets();
-loadTracker();
-
-
-// Toggle with animation + memory
-function toggleTracker(){
-  const wrapper = document.getElementById("trackerWrapper");
-  const arrow = document.getElementById("trackerArrow");
-
-  if(wrapper.classList.contains("collapsed")){
-    wrapper.classList.remove("collapsed");
-    wrapper.classList.add("expanded");
-    arrow.innerText="▲";
-    localStorage.setItem("tracker_open","true");
-  }else{
-    wrapper.classList.remove("expanded");
-    wrapper.classList.add("collapsed");
-    arrow.innerText="▼";
-    localStorage.setItem("tracker_open","false");
-  }
-}
-
-// Restore state on load
-document.addEventListener("DOMContentLoaded",function(){
-  const wrapper=document.getElementById("trackerWrapper");
-  const arrow=document.getElementById("trackerArrow");
-  const open=localStorage.getItem("tracker_open");
-  if(open==="true"){
-    wrapper.classList.remove("collapsed");
-    wrapper.classList.add("expanded");
-    arrow.innerText="▲";
-  }
-});
-
-// Extend loadTracker to update bet count
-const originalLoadTracker = loadTracker;
-loadTracker = async function(){
-  await originalLoadTracker();
-  const rows=document.querySelectorAll("#trackerTable table tr").length-1;
-  const count=document.getElementById("betCount");
-  if(count && rows>=0){count.innerText=rows;}
-};
-
-
-
-
-function renderMonthlyChart(profits, roi, labels){
-  const el = document.getElementById("monthlyChart");
-  if(!el) return;
-  if(monthlyChart) monthlyChart.destroy();
-
-  const maxROI = Math.max(...roi, 5);
-  const minROI = Math.min(...roi, -5);
-  const pad = 5;
-
-  const ctx = el.getContext("2d");
-
-  monthlyChart = new Chart(ctx,{
-    type:"bar",
-    data:{
-      labels:labels,
-      datasets:[{
-        data:roi,
-        borderRadius:10,
-        barThickness:24,
-        backgroundColor:profits.map(v=>{
-          if(v>0) return "rgba(34,197,94,0.9)";
-          if(v<0) return "rgba(239,68,68,0.9)";
-          return "rgba(100,116,139,0.4)";
-        })
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        y:{
-          min: Math.floor(minROI - pad),
-          max: Math.ceil(maxROI + pad),
-          ticks:{callback:(v)=>v+"%"},
-          grid:{color:"rgba(255,255,255,0.05)"}
-        }
-      }
-    },
-    plugins:[{
-      afterDatasetsDraw(chart){
-        const {ctx} = chart;
-        chart.getDatasetMeta(0).data.forEach((bar,i)=>{
-          const val = profits[i];
-          if(val === 0) return;
-          ctx.fillStyle="#fff";
-          ctx.font="bold 13px system-ui";
-          ctx.textAlign="center";
-          ctx.fillText("£"+val.toFixed(2), bar.x, roi[i]>=0 ? bar.y-8 : bar.y+18);
-        });
-      }
-    }]
-  });
-}
-
-
-function renderMarketChart(labels, winPct, totals){
-  const el = document.getElementById("marketChart");
-  if(!el) return;
-  if(marketChart) marketChart.destroy();
-
-  const ctx = el.getContext("2d");
-  marketChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        data: winPct,
-        borderWidth: 0,
-        borderRadius: 10,
-        barThickness: 18,
-        backgroundColor: winPct.map(v=>{
-          if(v >= 55) return "rgba(34,197,94,0.85)";   // green
-          if(v >= 40) return "rgba(245,158,11,0.85)";  // amber
-          return "rgba(239,68,68,0.85)";               // red
-        }),
-        borderColor: winPct.map(v=>{
-          if(v >= 55) return "#22c55e";
-          if(v >= 40) return "#f59e0b";
-          return "#ef4444";
-        })
-      }]
-    },
-    options: {
-      indexAxis: "y",
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx)=>{
-              const i = ctx.dataIndex;
-              const pct = Number(ctx.raw || 0).toFixed(0) + "%";
-              const t = (totals && totals[i]) ? totals[i] : { bets: 0, wins: 0, losses: 0 };
-              return `Win rate: ${pct} • Bets: ${t.bets} (W:${t.wins} L:${t.losses})`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          min: 0,
-          max: 100,
-          ticks: { display: false },
-          grid: { display: false, drawBorder: false }
-        },
-        y: {
-          ticks: { color: "rgba(229,231,235,0.85)", font: { weight: 800 } },
-          grid: { display: false, drawBorder: false }
-        }
-      },
-      animation: { duration: 250 }
-    },
-    plugins: [{
-      id: "pctLabels",
-      afterDatasetsDraw(chart){
-        const {ctx} = chart;
-        const meta = chart.getDatasetMeta(0);
-        ctx.save();
-        ctx.font = "800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-        ctx.fillStyle = "rgba(229,231,235,0.95)";
-        meta.data.forEach((bar, i)=>{
-          const val = winPct[i] ?? 0;
-          const text = Math.round(val) + "%";
-          const x = bar.x - 10; // inside bar near end
-          const y = bar.y + 4;
-          ctx.textAlign = "right";
-          ctx.fillText(text, x, y);
-        });
-        ctx.restore();
-      }
-    }]
-  });
-}
-
-function setMiniValue(id, prefix, value){
-  // legacy helper kept, now feeds Insights dropdown
-  const txt = (prefix ? (prefix + " ") : "") + (value || "—");
-  setInsight(id, txt);
-  updateInsightUI();
-}
-
-
-
-
-function initChartTabs(){
-  const btns = document.querySelectorAll(".tab-btn");
-  if(!btns.length) return;
-
-  btns.forEach(b=>{
-    b.addEventListener("click", ()=>{
-      btns.forEach(x=>x.classList.remove("active"));
-      b.classList.add("active");
-      const tab = b.getAttribute("data-tab");
-      document.querySelectorAll(".chart-pane").forEach(p=>p.classList.remove("active"));
-      const pane = document.getElementById("pane-"+tab);
-      if(pane) pane.classList.add("active");
-    });
-  });
-}
-
-
-function rowProfit(row){
-  if(row.result === "won") return row.stake * (row.odds - 1);
-  if(row.result === "lost") return -row.stake;
-  return 0;
-}
-
-
-function toggleInsights(){
-  const content = document.getElementById("insightsContent");
-  const arrow = document.getElementById("insightsArrow");
-
-  if(content.classList.contains("insights-collapsed")){
-    content.classList.remove("insights-collapsed");
-    content.classList.add("insights-expanded");
-    arrow.innerText="▲";
-  }else{
-    content.classList.remove("insights-expanded");
-    content.classList.add("insights-collapsed");
-    arrow.innerText="▼";
-  }
-}
-
-
-// Auto-close Insights when switching chart tabs
-document.addEventListener("click", function(e){
-  if(e.target.classList.contains("tab-btn")){
-    const content = document.getElementById("insightsContent");
-    const arrow = document.getElementById("insightsArrow");
-    if(content && !content.classList.contains("insights-collapsed")){
-      content.classList.remove("insights-expanded");
-      content.classList.add("insights-collapsed");
-      arrow.innerText="▼";
-    }
-  }
-});
-
-function toggleMonthly(){
-  const wrapper=document.getElementById("monthlyWrapper");
-  const arrow=document.getElementById("monthlyArrow");
-  if(wrapper.classList.contains("collapsed")){
-    wrapper.classList.remove("collapsed");
-    wrapper.classList.add("expanded");
-    arrow.innerText="▲";
-  }else{
-    wrapper.classList.remove("expanded");
-    wrapper.classList.add("collapsed");
-    arrow.innerText="▼";
-  }
-}
-const startingInput = document.getElementById("startingBankroll");
-
-if(startingInput){
-  // Load saved value
-  const saved = localStorage.getItem("starting_bankroll");
-  if(saved){
-    startingInput.value = saved;
-  }
-
-  // Save on change
-  startingInput.addEventListener("input", function(){
-    localStorage.setItem("starting_bankroll", this.value);
-  });
-}
-
-
-// Ensure bets load on page ready
-document.addEventListener("DOMContentLoaded", function(){
-  if (typeof loadBets === "function") {
+// ----------------------
+// Tabs
+// ----------------------
+function setTab(tab) {
+  currentTab = tab;
+  tabBtns.forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+
+  if (tab === "value") {
+    document.getElementById("valueSection").style.display = "block";
+    document.getElementById("trackerSection").style.display = "none";
     loadBets();
+  } else {
+    document.getElementById("valueSection").style.display = "none";
+    document.getElementById("trackerSection").style.display = "block";
+    loadTracker();
   }
+}
+
+// ----------------------
+// Value bets
+// ----------------------
+function renderBetCard(bet) {
+  const date = bet.bet_date ? new Date(bet.bet_date).toISOString().slice(0, 10) : "";
+  const valuePct = bet.value_pct != null ? `${Number(bet.value_pct).toFixed(1)}%` : "";
+
+  return `
+    <div class="bet-card">
+      <div class="bet-left">
+        <div class="bet-match">${escapeHtml(bet.match || "")}</div>
+        <div class="bet-market">${escapeHtml(bet.market || "")}</div>
+        <div class="bet-meta">
+          <span class="pill">Value ${valuePct}</span>
+          <span class="pill">Odds ${escapeHtml(String(bet.odds ?? ""))}</span>
+        </div>
+      </div>
+      <div class="bet-right">
+        <div class="bet-date">${escapeHtml(date)}</div>
+        <button class="btn-add" data-id="${bet.id}">Add</button>
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getOrderBy() {
+  switch (currentSort) {
+    case "date_asc":
+      return { column: "bet_date", ascending: true };
+    case "value_desc":
+      return { column: "value_pct", ascending: false };
+    case "value_asc":
+      return { column: "value_pct", ascending: true };
+    case "date_desc":
+    default:
+      return { column: "bet_date", ascending: false };
+  }
+}
+
+async function loadBets() {
+  if (!betsContainer) return;
+  betsContainer.innerHTML = `<div class="loading">Loading bets...</div>`;
+
+  const { column, ascending } = getOrderBy();
+  const { data, error } = await supabase
+    .from("value_bets")
+    .select("id, match, market, odds, bet_date, value_pct")
+    .order(column, { ascending, nullsFirst: false });
+
+  if (error) {
+    betsContainer.innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    betsContainer.innerHTML = `<div class="empty">No bets found.</div>`;
+    return;
+  }
+
+  betsContainer.innerHTML = data.map(renderBetCard).join("");
+
+  // Add handlers
+  betsContainer.querySelectorAll(".btn-add").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const betId = btn.getAttribute("data-id");
+      await addToTracker(betId);
+    });
+  });
+}
+
+async function addToTracker(betId) {
+  if (!currentUser) {
+    setAuthMode("signin");
+    openAuthModal();
+    authMsg.textContent = "Please log in to add bets to your tracker.";
+    return;
+  }
+
+  // Fetch bet
+  const { data: bet, error: betErr } = await supabase
+    .from("value_bets")
+    .select("id, match, market, odds, bet_date")
+    .eq("id", betId)
+    .single();
+
+  if (betErr) {
+    alert(betErr.message);
+    return;
+  }
+
+  // Insert into bet_tracker (must have these columns)
+  const payload = {
+    user_id: currentUser.id,
+    bet_id: bet.id,
+    match: bet.match,
+    market: bet.market,
+    odds: bet.odds,
+    bet_date: bet.bet_date,
+    stake: null,
+    result: null,
+    profit: null,
+  };
+
+  const { error } = await supabase.from("bet_tracker").insert(payload);
+
+  if (error) {
+    alert(`Could not add: ${error.message}`);
+    return;
+  }
+
+  // Switch to tracker tab
+  setTab("tracker");
+}
+
+// ----------------------
+// Tracker
+// ----------------------
+function setStats({ totalProfit, totalStake, totalBets }) {
+  if (totalProfitEl) totalProfitEl.textContent = formatMoney(totalProfit);
+  if (totalStakeEl) totalStakeEl.textContent = formatMoney(totalStake);
+  if (totalBetsEl) totalBetsEl.textContent = String(totalBets);
+  if (betCountEl) betCountEl.textContent = String(totalBets);
+}
+
+function formatMoney(v) {
+  const n = Number(v || 0);
+  return n.toFixed(2);
+}
+
+function renderTrackerTable(rows) {
+  if (!trackerTable) return;
+
+  const head = `
+    <table class="tracker-table">
+      <thead>
+        <tr>
+          <th>Match</th>
+          <th>Market</th>
+          <th>Odds</th>
+          <th>Stake</th>
+          <th>Result</th>
+          <th>Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  const body = rows
+    .map((r) => {
+      return `
+        <tr data-id="${r.id}">
+          <td>${escapeHtml(r.match || "")}</td>
+          <td>${escapeHtml(r.market || "")}</td>
+          <td>${escapeHtml(String(r.odds ?? ""))}</td>
+          <td><input class="trk-stake" type="number" step="0.01" min="0" value="${r.stake ?? ""}" placeholder="0"></td>
+          <td>
+            <select class="trk-result">
+              <option value="" ${r.result == null ? "selected" : ""}>Pending</option>
+              <option value="win" ${r.result === "win" ? "selected" : ""}>Win</option>
+              <option value="loss" ${r.result === "loss" ? "selected" : ""}>Loss</option>
+              <option value="void" ${r.result === "void" ? "selected" : ""}>Void</option>
+            </select>
+          </td>
+          <td>${escapeHtml(formatMoney(r.profit))}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const foot = `</tbody></table>`;
+
+  trackerTable.innerHTML = head + body + foot;
+
+  // Wire inputs
+  trackerTable.querySelectorAll("tr[data-id]").forEach((tr) => {
+    const id = tr.getAttribute("data-id");
+    const stakeInput = tr.querySelector(".trk-stake");
+    const resultSelect = tr.querySelector(".trk-result");
+
+    const save = async () => {
+      const stake = stakeInput.value === "" ? null : Number(stakeInput.value);
+      const result = resultSelect.value === "" ? null : resultSelect.value;
+
+      // Profit calc (simple): win => stake*(odds-1), loss => -stake, void => 0
+      let profit = null;
+      if (stake != null && result) {
+        if (result === "win") profit = stake * (Number(tr.querySelectorAll('td')[2].textContent) - 1);
+        if (result === "loss") profit = -stake;
+        if (result === "void") profit = 0;
+      }
+
+      const { error } = await supabase
+        .from("bet_tracker")
+        .update({ stake, result, profit })
+        .eq("id", id);
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      await loadTracker();
+    };
+
+    stakeInput.addEventListener("change", save);
+    resultSelect.addEventListener("change", save);
+  });
+}
+
+async function loadTracker() {
+  if (!currentUser) {
+    trackerTable.innerHTML = `<div class="empty">Log in to use the tracker.</div>`;
+    setStats({ totalProfit: 0, totalStake: 0, totalBets: 0 });
+    return;
+  }
+
+  trackerTable.innerHTML = `<div class="loading">Loading tracker...</div>`;
+
+  const { data, error } = await supabase
+    .from("bet_tracker")
+    .select("id, match, market, odds, stake, result, profit")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    trackerTable.innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    setStats({ totalProfit: 0, totalStake: 0, totalBets: 0 });
+    return;
+  }
+
+  const rows = data || [];
+  const totalStake = rows.reduce((a, r) => a + (Number(r.stake) || 0), 0);
+  const totalProfit = rows.reduce((a, r) => a + (Number(r.profit) || 0), 0);
+
+  setStats({ totalProfit, totalStake, totalBets: rows.length });
+  renderTrackerTable(rows);
+}
+
+// ----------------------
+// Collapsible UI
+// ----------------------
+window.toggleTracker = function toggleTracker() {
+  const isCollapsed = trackerWrapper.classList.contains("collapsed");
+  trackerWrapper.classList.toggle("collapsed", !isCollapsed);
+  trackerArrow.textContent = isCollapsed ? "▲" : "▼";
+};
+
+window.toggleMonthly = function toggleMonthly() {
+  const isCollapsed = monthlyWrapper.classList.contains("collapsed");
+  monthlyWrapper.classList.toggle("collapsed", !isCollapsed);
+  monthlyArrow.textContent = isCollapsed ? "▲" : "▼";
+  if (monthlyTable) monthlyTable.innerHTML = ""; // optional
+};
+
+// Chart tabs (just switching panes; charts optional)
+const chartTabBtns = Array.from(document.querySelectorAll(".chart-tabs .tab-btn"));
+const chartPanes = Array.from(document.querySelectorAll(".chart-pane"));
+chartTabBtns.forEach((b) => {
+  b.addEventListener("click", () => {
+    chartTabBtns.forEach((x) => x.classList.toggle("active", x === b));
+    const t = b.dataset.tab;
+    chartPanes.forEach((p) => p.classList.toggle("active", p.id === `pane-${t}`));
+  });
+});
+
+// ----------------------
+// Boot
+// ----------------------
+if (authBtn) authBtn.addEventListener("click", handleAuthButton);
+if (authClose) authClose.addEventListener("click", closeAuthModal);
+if (authBackdrop) authBackdrop.addEventListener("click", closeAuthModal);
+if (authSubmit) authSubmit.addEventListener("click", submitAuth);
+if (authToggle)
+  authToggle.addEventListener("click", () => setAuthMode(authMode === "signin" ? "signup" : "signin"));
+
+// Main tabs
+const mainTabBtns = Array.from(document.querySelectorAll('.main-tabs .tab-btn'));
+mainTabBtns.forEach((b) => {
+  b.addEventListener('click', () => setTab(b.dataset.tab));
+});
+
+if (sortSelect) {
+  sortSelect.addEventListener("change", () => {
+    currentSort = sortSelect.value;
+    loadBets();
+  });
+}
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  currentUser = session?.user || null;
+  updateAuthUI();
+  if (currentTab === "tracker") loadTracker();
+});
+
+refreshSession().then(() => {
+  setTab("value");
 });
