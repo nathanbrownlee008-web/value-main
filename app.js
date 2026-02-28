@@ -128,7 +128,7 @@ function applyBetsSort(){
 }
 
 async function loadBets(){
-  const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
+  const {data}=await client.from("value_bets").select("*").order("created_at", { ascending: false });
   betsAllRows = data || [];
   applyBetsSort();
 }
