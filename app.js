@@ -46,7 +46,6 @@ const { data, error } = await client
       <thead>
         <tr>
           <th>Date</th>
-          <th>League</th>
           <th>Match</th>
           <th>Market</th>
           <th>Odds</th>
@@ -57,7 +56,6 @@ const { data, error } = await client
         ${data.map(row => `
           <tr>
             <td>${row.bet_date ?? "-"}</td>
-            <td>${row.league ?? "-"}</td>
             <td>${row.match}</td>
             <td>${row.market}</td>
             <td>${row.odds}</td>
