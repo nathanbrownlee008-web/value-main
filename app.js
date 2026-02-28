@@ -1,4 +1,15 @@
 
+// Safety check: ensure Supabase loaded
+if (typeof window.supabase === "undefined") {
+  document.addEventListener("DOMContentLoaded", function(){
+    const el = document.getElementById("betsStatus");
+    if (el) {
+      el.innerHTML = "<span style='color:#ef4444;font-weight:900'>Supabase library failed to load</span><br>Check CDN connection.";
+    }
+  });
+}
+
+
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
 const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
