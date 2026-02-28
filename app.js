@@ -23,40 +23,55 @@ tabBets.classList.toggle("active",show);
 tabTracker.classList.toggle("active",!show);
 }
 
-async function loadBets(){
-const {data}=await client.from("value_bets").select("*").order("bet_date",{ascending:false});
-betsGrid.innerHTML="";
-if(!data) return;
-let html = `
-<table class="value-table">
-<tr>
-  <th>Date</th>
-  <th>Match</th>
-  <th>Market</th>
-  <th>Odds</th>
-  <th>Add</th>
-</tr>
-`;
+async function loadBets() {
 
-data.forEach(row => {
-  html += `
-  <tr>
-    <td>${row.bet_date ?? ""}</td>
-    <td>${row.match ?? ""}</td>
-    <td>${row.market ?? ""}</td>
-    <td>${row.odds ?? ""}</td>
-    <td>
-      <button class="add-btn"
-        onclick='addToTracker(${JSON.stringify(row)})'>
-        +
-      </button>
-    </td>
-  </tr>`;
-});
+  const { data, error } = await client
+    .from("value_bets")
+    .select("*")
+    .order("bet_date", { ascending: true });
 
-html += "</table>";
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
 
-betsGrid.innerHTML = html;
+  betsGrid.innerHTML = "";
+
+  if (!data || data.length === 0) {
+    betsGrid.innerHTML =
+      "<p style='opacity:.6'>No games found.</p>";
+    return;
+  }
+
+  betsGrid.innerHTML = `
+    <table class="value-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>League</th>
+          <th>Match</th>
+          <th>Market</th>
+          <th>Odds</th>
+          <th>Add</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(row => `
+          <tr>
+            <td>${row.bet_date ?? "-"}</td>
+            <td>${row.league ?? "-"}</td>
+            <td>${row.match}</td>
+            <td>${row.market}</td>
+            <td>${row.odds}</td>
+            <td>
+              <button class="add-btn"
+                onclick='addToTracker(${JSON.stringify(row)})'>
+                +
+              </button>
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
 }
 
 async function addToTracker(row){
