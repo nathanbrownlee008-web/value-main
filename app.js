@@ -1,7 +1,17 @@
 
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
 const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
-const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  global: {
+    // Add a hard timeout so "Loading…" never hangs forever on mobile/production
+    fetch: (input, init = {}) => {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 8000);
+      return fetch(input, { ...init, signal: controller.signal })
+        .finally(() => clearTimeout(t));
+    }
+  }
+});
 
 const bankrollElem=document.getElementById("bankroll");
 const profitElem=document.getElementById("profit");
@@ -134,7 +144,20 @@ function applyBetsSort(){
 
 async function loadBets(){
   try{
-    setBetsStatus(`Loading bets…<br><span style="opacity:.75">URL:</span> <b>${SUPABASE_URL}</b>`);
+    const keyType = (String(SUPABASE_KEY||"").startsWith("sb_"))
+      ? "sb_* (new key format)"
+      : "JWT (starts eyJ…)";
+
+    setBetsStatus(`Loading bets…<br><span style="opacity:.75">URL:</span> <b>${SUPABASE_URL}</b><br><span style="opacity:.75">Key:</span> <b>${keyType}</b>`);
+
+    // quick connectivity check (no ordering)
+    const ping = await client.from("value_bets").select("id").limit(1);
+    if(ping.error){
+      console.error("ping error:", ping.error);
+      setBetsStatus(`<span class="bad">Supabase error</span><br><b>${ping.error.message || ping.error}</b><br><span style="opacity:.75">Tip:</span> Check Settings → API → Project URL + anon/public key match app.js.`);
+      return;
+    }
+
     const {data, error} = await client
       .from("value_bets")
       .select("*")
@@ -150,14 +173,15 @@ async function loadBets(){
 
     betsAllRows = data || [];
     if(!betsAllRows.length){
-      setBetsStatus(`<span class="bad">No rows returned</span><br>Table: <b>value_bets</b> • URL: <b>${SUPABASE_URL}</b><br><span style="opacity:.75">If you see rows in Supabase, you’re likely editing a different project (URL mismatch) or the table name differs.</span>`);
+      setBetsStatus(`<span class="bad">No rows returned</span><br>Table: <b>value_bets</b> • URL: <b>${SUPABASE_URL}</b><br><span style="opacity:.75">You have rows in Supabase? Then you’re likely editing a different project or the key doesn’t match this project.</span>`);
     }else{
       setBetsStatus(`<span class="ok">Loaded</span> <b>${betsAllRows.length}</b> bet(s) • Sorting: <b>${(document.getElementById("betsSort")?.value)||"date_desc"}</b>`);
     }
     applyBetsSort();
   }catch(err){
     console.error("loadBets exception:", err);
-    setBetsStatus(`<span class="bad">JS exception</span><br><b>${err?.message || err}</b>`);
+    const msg = (err && err.name === "AbortError") ? "Request timed out (8s)" : (err?.message || String(err));
+    setBetsStatus(`<span class="bad">Request failed</span><br><b>${msg}</b><br><span style="opacity:.75">Tip:</span> If it times out, your URL/key is wrong or the network is blocking Supabase.`);
   }
 }
 
