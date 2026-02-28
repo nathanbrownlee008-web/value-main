@@ -794,3 +794,4 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
+loadBets();
