@@ -643,3 +643,41 @@ th{text-align:left}
 .bets-status .ok{ color: #22c55e; font-weight: 900; }
 .bets-status .bad{ color: #ef4444; font-weight: 900; }
 
+
+/* ===== Supabase key setup (one-time) ===== */
+.key-setup{
+  margin: 10px 0 12px 0;
+  padding: 12px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.key-setup h4{
+  margin: 0 0 8px 0;
+  font-size: 13px;
+}
+.key-setup input{
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.20);
+  color: #e5e7eb;
+  outline: none;
+  font-weight: 700;
+}
+.key-setup .row{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+  flex-wrap:wrap;
+}
+.key-setup button{
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-weight: 900;
+}
+.key-setup .muted{ opacity: .75; }

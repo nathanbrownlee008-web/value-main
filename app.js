@@ -11,12 +11,80 @@ if (typeof window.supabase === "undefined") {
 
 
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
-const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  global: {
-    // Add a hard timeout so "Loading…" never hangs forever on mobile/production
-    fetch: (input, init = {}) => {
-      const controller = new AbortController();
+const SUPABASE_KEY = "";
+
+function setBetsStatus(html){
+  const el = document.getElementById("betsStatus");
+  if(el) el.innerHTML = html;
+}
+
+function showKeySetup(){
+  const box = document.getElementById("keySetup");
+  if(!box) return;
+  box.style.display = "block";
+  box.innerHTML = `
+    <h4>Connect Supabase</h4>
+    <div class="muted">Paste your <b>anon public key</b> from Supabase → <b>Settings → API</b> (it usually starts with <b>eyJ</b>).</div>
+    <div class="muted" style="margin-top:6px">Project URL: <b>${SUPABASE_URL}</b></div>
+    <div style="margin-top:10px">
+      <input id="anonKeyInput" placeholder="eyJ..." autocomplete="off" />
+      <div class="row">
+        <button id="saveAnonKeyBtn">Save key</button>
+        <button id="clearAnonKeyBtn" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28)">Clear</button>
+      </div>
+    </div>
+  `;
+  const saveBtn = document.getElementById("saveAnonKeyBtn");
+  const clearBtn = document.getElementById("clearAnonKeyBtn");
+  saveBtn?.addEventListener("click", ()=>{
+    const v = (document.getElementById("anonKeyInput")?.value || "").trim();
+    if(!v){
+      setBetsStatus('<span class="bad">Missing key</span><br>Please paste the anon public key.');
+      return;
+    }
+    localStorage.setItem("supabase_anon_key", v);
+    location.reload();
+  });
+  clearBtn?.addEventListener("click", ()=>{
+    localStorage.removeItem("supabase_anon_key");
+    location.reload();
+  });
+}
+
+function getAnonKey(){
+  const v = localStorage.getItem("supabase_anon_key");
+  return v ? v.trim() : "";
+}
+
+function makeClient(){
+  if (typeof window.supabase === "undefined") return null;
+  const key = getAnonKey();
+  if(!key){
+    showKeySetup();
+    setBetsStatus('<span class="bad">Not connected</span><br>Paste anon key above to load bets.');
+    return null;
+  }
+  // quick sanity: warn if they pasted sb_* key
+  if(key.startsWith("sb_")){
+    showKeySetup();
+    setBetsStatus('<span class="bad">Wrong key</span><br>You pasted an <b>sb_*</b> key. Use the <b>anon public key</b> (starts <b>eyJ</b>).');
+    return null;
+  }
+  return supabase.createClient(SUPABASE_URL, key, {
+    global: {
+      fetch: (input, init = {}) => {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 8000);
+        return fetch(input, { ...init, signal: controller.signal })
+          .finally(() => clearTimeout(t));
+      }
+    }
+  });
+}
+
+const client = makeClient();
+
+
 
       const t = setTimeout(() => controller.abort(), 8000);
       return fetch(input, { ...init, signal: controller.signal })
@@ -155,6 +223,7 @@ function applyBetsSort(){
 }
 
 async function loadBets(){
+  if(!client){ return; }
   try{
     const keyType = (String(SUPABASE_KEY||"").startsWith("sb_"))
       ? "sb_* (new key format)"
