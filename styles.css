@@ -566,32 +566,174 @@ th{text-align:left}
 
 
 
-/* ===== Value % chip (Value Bets cards) ===== */
+/* ===== Value Bets toolbar (mobile-first) ===== */
+.bets-toolbar{
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  margin: 0 0 10px 0;
+}
+
+.bets-toolbar__left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.bets-toolbar__label{
+  font-weight:800;
+  opacity:0.8;
+  font-size:12px;
+}
+
+.bets-toolbar__select{
+  appearance:none;
+  background: rgba(255,255,255,0.06);
+  color: #e5e7eb;
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  outline: none;
+}
+
+/* ===== Value/Prob chips ===== */
 .bet-stats{
   display:flex;
   gap:8px;
-  margin-top:2px;
+  margin-top: 2px;
 }
 
 .stat-chip{
   display:inline-flex;
   align-items:center;
   gap:8px;
-  padding:5px 8px;
-  border-radius:999px;
+  padding: 5px 8px;
+  border-radius: 999px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.10);
-  font-size:12px;
-  white-space:nowrap;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .stat-chip__k{
   opacity:0.70;
-  font-weight:800;
+  font-weight: 800;
   letter-spacing:0.2px;
 }
 
 .stat-chip__v{
-  font-weight:900;
+  font-weight: 900;
   font-variant-numeric: tabular-nums;
+}
+
+/* ===== Debug / status banner ===== */
+.bets-status{
+  margin: 6px 0 10px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(226,232,240,0.92);
+}
+.bets-status b{ color: #fff; }
+.bets-status .ok{ color: #22c55e; font-weight: 900; }
+.bets-status .bad{ color: #ef4444; font-weight: 900; }
+
+
+/* ===== Auth UI ===== */
+.auth-btn{
+  position:absolute;
+  right:14px;
+  top:14px;
+  padding:8px 12px;
+  border-radius:12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color:#e5e7eb;
+  font-weight:900;
+  font-size:12px;
+}
+.auth-btn:hover{ background: rgba(255,255,255,0.09); }
+
+.auth-modal{ position:fixed; inset:0; z-index:9999; }
+.auth-modal__backdrop{ position:absolute; inset:0; background:rgba(0,0,0,0.60); }
+.auth-modal__panel{
+  position:relative;
+  width:min(420px, 92vw);
+  margin: 10vh auto 0;
+  background: rgba(15,23,42,0.96);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+  padding: 14px;
+}
+.auth-modal__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.auth-modal__head h3{ margin:0; font-size:16px; }
+.auth-x{
+  border-radius:10px;
+  padding:6px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color:#e5e7eb;
+  font-weight:900;
+}
+.auth-hint{
+  opacity:0.8;
+  font-size:12px;
+  margin: 0 0 10px 0;
+  line-height: 1.35;
+}
+.auth-input{
+  width:100%;
+  box-sizing:border-box;
+  padding:10px 12px;
+  margin: 0 0 10px 0;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  color:#e5e7eb;
+  outline:none;
+  font-weight:700;
+}
+.auth-primary{
+  width:100%;
+  padding:10px 12px;
+  border-radius: 12px;
+  font-weight: 900;
+  background: rgba(34,197,94,0.16);
+  border: 1px solid rgba(34,197,94,0.32);
+  color:#e5e7eb;
+}
+.auth-secondary{
+  width:100%;
+  padding:10px 12px;
+  border-radius: 12px;
+  font-weight: 900;
+  margin-top:10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color:#e5e7eb;
+}
+.auth-msg{
+  margin-top:10px;
+  font-size:12px;
+  line-height:1.35;
+  opacity:0.95;
+}
+.auth-msg.ok{ color: rgba(34,197,94,0.95); font-weight: 900; }
+.auth-msg.bad{ color: rgba(239,68,68,0.95); font-weight: 900; }
+
+@media (max-width: 600px){
+  .auth-btn{ top:10px; right:10px; }
+  .auth-modal__panel{ margin-top: 8vh; }
 }

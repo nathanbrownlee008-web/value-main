@@ -4,7 +4,6 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Top Daily Tips</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="styles.css"/>
 </head>
@@ -16,10 +15,28 @@
 <button id="tabBets" class="active">Value Bets</button>
 <button id="tabTracker">Tracker</button>
 </div>
+  <button id="authBtn" class="auth-btn">Log in</button>
 </header>
 
 <section id="betsSection">
-<div id="betsGrid" class="bets-grid"></div>
+  <div id="betsStatus" class="bets-status">Loading bets…</div>
+  <div class="bets-toolbar">
+    <div class="bets-toolbar__left">
+      <span class="bets-toolbar__label">Sort</span>
+      <select id="betsSort" class="bets-toolbar__select">
+        <option value="date_desc">Date (newest)</option>
+        <option value="date_asc">Date (oldest)</option>
+        <option value="value_desc">Value % (high)</option>
+        <option value="value_asc">Value % (low)</option>
+        <option value="prob_desc">Probability % (high)</option>
+        <option value="prob_asc">Probability % (low)</option>
+        <option value="odds_desc">Odds (high)</option>
+        <option value="odds_asc">Odds (low)</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="betsGrid" class="bets-grid"></div>
 </section>
 
 <section id="trackerSection" style="display:none;">
@@ -85,6 +102,26 @@
 
 </section>
 
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
+
+<div id="authModal" class="auth-modal" style="display:none" aria-hidden="true">
+  <div class="auth-modal__backdrop" id="authBackdrop"></div>
+  <div class="auth-modal__panel" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="auth-modal__head">
+      <h3 id="authTitle">Log in</h3>
+      <button class="auth-x" id="authClose" aria-label="Close">✕</button>
+    </div>
+    <div class="auth-modal__body">
+      <div class="auth-hint" id="authHint">Use email + password. (Sign up if you don’t have an account yet.)</div>
+      <input id="authEmail" class="auth-input" type="email" placeholder="Email" autocomplete="email">
+      <input id="authPass" class="auth-input" type="password" placeholder="Password" autocomplete="current-password">
+      <button id="authSubmit" class="auth-primary">Log in</button>
+      <button id="authToggle" class="auth-secondary">Create account</button>
+      <div id="authMsg" class="auth-msg"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

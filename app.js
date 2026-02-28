@@ -1,7 +1,128 @@
 
 const SUPABASE_URL="https://krmmmutcejnzdfupexpv.supabase.co";
-const SUPABASE_KEY="sb_publishable_3NHjMMVw1lai9UNAA-0QZA_sKM21LgD";
-const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const SUPABASE_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
+
+// ===== Supabase client =====
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ===== Auth (Email + Password) =====
+let authMode = "signin"; // signin | signup
+let pendingAddRow = null;
+
+function el(id){ return document.getElementById(id); }
+
+function openAuth(){
+  const m = el("authModal");
+  if(!m) return;
+  m.style.display = "block";
+  m.setAttribute("aria-hidden","false");
+  renderAuthMode();
+  setAuthMsg("");
+}
+
+function closeAuth(){
+  const m = el("authModal");
+  if(!m) return;
+  m.style.display = "none";
+  m.setAttribute("aria-hidden","true");
+}
+
+function setAuthMsg(msg, type){
+  const box = el("authMsg");
+  if(!box) return;
+  box.className = "auth-msg" + (type ? (" " + type) : "");
+  box.innerHTML = msg || "";
+}
+
+function renderAuthMode(){
+  const title = el("authTitle");
+  const btn = el("authSubmit");
+  const toggle = el("authToggle");
+  const hint = el("authHint");
+  if(title) title.textContent = (authMode === "signup") ? "Create account" : "Log in";
+  if(btn) btn.textContent = (authMode === "signup") ? "Sign up" : "Log in";
+  if(toggle) toggle.textContent = (authMode === "signup") ? "I already have an account" : "Create account";
+  if(hint) hint.textContent = (authMode === "signup")
+    ? "Create an account with email + password."
+    : "Log in with your email + password.";
+}
+
+async function refreshAuthButton(){
+  const btn = el("authBtn");
+  if(!btn) return;
+  const { data } = await client.auth.getSession();
+  if(data && data.session){
+    btn.textContent = "Log out";
+  } else {
+    btn.textContent = "Log in";
+  }
+}
+
+async function handleAuthSubmit(){
+  const email = (el("authEmail")?.value || "").trim();
+  const password = (el("authPass")?.value || "").trim();
+  if(!email || !password){
+    setAuthMsg("Enter email + password.", "bad");
+    return;
+  }
+  setAuthMsg("Working…");
+  try{
+    let res;
+    if(authMode === "signup"){
+      res = await client.auth.signUp({ email, password });
+    }else{
+      res = await client.auth.signInWithPassword({ email, password });
+    }
+    if(res.error){
+      setAuthMsg(res.error.message, "bad");
+      return;
+    }
+    setAuthMsg("Success ✅", "ok");
+    await refreshAuthButton();
+    if(pendingAddRow){
+      const row = pendingAddRow;
+      pendingAddRow = null;
+      closeAuth();
+      await addToTracker(row, true);
+      return;
+    }
+    closeAuth();
+  }catch(e){
+    setAuthMsg((e && e.message) ? e.message : String(e), "bad");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async ()=>{
+  el("authBtn")?.addEventListener("click", async ()=>{
+    const { data } = await client.auth.getSession();
+    if(data && data.session){
+      await client.auth.signOut();
+      await refreshAuthButton();
+      if(typeof loadTracker === "function") loadTracker();
+    } else {
+      openAuth();
+    }
+  });
+  el("authClose")?.addEventListener("click", closeAuth);
+  el("authBackdrop")?.addEventListener("click", closeAuth);
+  el("authToggle")?.addEventListener("click", ()=>{
+    authMode = (authMode === "signup") ? "signin" : "signup";
+    renderAuthMode();
+    setAuthMsg("");
+  });
+  el("authSubmit")?.addEventListener("click", handleAuthSubmit);
+
+  await refreshAuthButton();
+  client.auth.onAuthStateChange(async ()=>{ await refreshAuthButton(); });
+});
+
+
+const t = setTimeout(() => controller.abort(), 8000);
+      return fetch(input, { ...init, signal: controller.signal })
+        .finally(() => clearTimeout(t));
+    }
+  }
+});
 
 const bankrollElem=document.getElementById("bankroll");
 const profitElem=document.getElementById("profit");
@@ -23,37 +144,205 @@ tabBets.classList.toggle("active",show);
 tabTracker.classList.toggle("active",!show);
 }
 
-async function loadBets(){
-const {data}=await client.from("value_bets").select("*").order("value_pct",{ascending:false,nullsFirst:false}).order("created_at",{ascending:false});
-betsGrid.innerHTML="";
-if(!data) return;
-data.forEach(row=>{
-betsGrid.innerHTML+=`
+
+function setBetsStatus(html){
+  const el = document.getElementById("betsStatus");
+  if(el) el.innerHTML = html;
+}
+let betsAllRows = [];
+
+function _num(v){
+  if(v == null) return NaN;
+  if(typeof v === "number") return v;
+  // handle "12.3%", "12,3", etc.
+  const s = String(v).replace("%","").replace(",","").trim();
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function _pickPct(row, keys){
+  for(const k of keys){
+    if(row && row[k] != null && row[k] !== "") return _num(row[k]);
+  }
+  return NaN;
+}
+
+// Try a few possible column names so it works even if your DB column differs
+function rowValuePct(row){
+  return _pickPct(row, ["value_pct","value_percent","value_percentage","value","edge_pct","edge_percent","edge"]);
+}
+function rowProbPct(row){
+  return _pickPct(row, ["probability_pct","probability_percent","probability_percentage","probability","prob_pct","prob"]);
+}
+
+function renderBets(rows){
+  betsGrid.innerHTML = "";
+  (rows || []).forEach(row=>{
+    const v = rowValuePct(row);
+    const p = rowProbPct(row);
+
+    const vText = Number.isFinite(v) ? `${v.toFixed(1)}%` : "—";
+    const pText = Number.isFinite(p) ? `${p.toFixed(1)}%` : "—";
+
+    betsGrid.innerHTML += `
 <div class="card bet-card ${row.high_value ? 'bet-card--hv' : ''}">
   <h3 class="bet-title">${row.match}</h3>
   <div class="bet-meta">
     <span class="bet-market">${row.market}</span>
-    <span class="bet-date">${row.bet_date || (row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : '')}</span>
+    <span class="bet-date">${row.bet_date}</span>
   </div>
+
   <div class="bet-stats">
-    <span class="stat-chip"><span class="stat-chip__k">Value</span><span class="stat-chip__v">${(row.value_pct ?? row.value_percent ?? row.value_percentage ?? row.value) != null ? Number(row.value_pct ?? row.value_percent ?? row.value_percentage ?? row.value).toFixed(1)+'%' : '—'}</span></span>
+    <span class="stat-chip"><span class="stat-chip__k">Value</span><span class="stat-chip__v">${vText}</span></span>
+    <span class="stat-chip"><span class="stat-chip__k">Prob</span><span class="stat-chip__v">${pText}</span></span>
   </div>
+
   <div class="bet-footer">
     <span class="odds-badge">Odds <strong>${row.odds}</strong></span>
     <button class="bet-btn" onclick='addToTracker(${JSON.stringify(row)})'>Add</button>
   </div>
 </div>`;
-});
+  });
 }
 
-async function addToTracker(row){
-await client.from("bet_tracker").insert({
-match:row.match,
-market:row.market,
-odds:row.odds,
-match_date_date: row.bet_date,
-stake:10,
-result:"pending"
+function applyBetsSort(){
+  const sel = document.getElementById("betsSort");
+  const mode = sel ? sel.value : "date_desc";
+
+  const rows = [...(betsAllRows || [])];
+
+  const byDate = (a,b)=>{
+    const da = new Date(a.bet_date || a.created_at || 0).getTime();
+    const db = new Date(b.bet_date || b.created_at || 0).getTime();
+    return da - db;
+  };
+  const byOdds = (a,b)=> (_num(a.odds) - _num(b.odds));
+  const byValue = (a,b)=> (rowValuePct(a) - rowValuePct(b));
+  const byProb  = (a,b)=> (rowProbPct(a) - rowProbPct(b));
+
+  // helper to push NaNs to the bottom always
+  const nanLast = (cmp)=>{
+    return (a,b)=>{
+      const av = cmp === byDate ? new Date(a.bet_date || a.created_at || 0).getTime()
+              : cmp === byOdds ? _num(a.odds)
+              : cmp === byValue ? rowValuePct(a)
+              : rowProbPct(a);
+      const bv = cmp === byDate ? new Date(b.bet_date || b.created_at || 0).getTime()
+              : cmp === byOdds ? _num(b.odds)
+              : cmp === byValue ? rowValuePct(b)
+              : rowProbPct(b);
+      const aNaN = !Number.isFinite(av);
+      const bNaN = !Number.isFinite(bv);
+      if(aNaN && bNaN) return 0;
+      if(aNaN) return 1;
+      if(bNaN) return -1;
+      return cmp(a,b);
+    };
+  };
+
+  if(mode === "date_desc") rows.sort((a,b)=> byDate(b,a));
+  else if(mode === "date_asc") rows.sort(byDate);
+  else if(mode === "odds_desc") rows.sort((a,b)=> nanLast(byOdds)(b,a));
+  else if(mode === "odds_asc") rows.sort(nanLast(byOdds));
+  else if(mode === "value_desc") rows.sort((a,b)=> nanLast(byValue)(b,a));
+  else if(mode === "value_asc") rows.sort(nanLast(byValue));
+  else if(mode === "prob_desc") rows.sort((a,b)=> nanLast(byProb)(b,a));
+  else if(mode === "prob_asc") rows.sort(nanLast(byProb));
+  else rows.sort((a,b)=> byDate(b,a));
+
+  renderBets(rows);
+}
+
+async function loadBets(){
+  try{
+    const keyType = (String(SUPABASE_KEY||"").startsWith("sb_"))
+      ? "sb_* (new key format)"
+      : "JWT (starts eyJ…)";
+
+    setBetsStatus(`Loading bets...<br><span style="opacity:.75">URL:</span> <b>${SUPABASE_URL}</b><br><span style="opacity:.75">Key:</span> <b>${keyType}</b>`);
+
+    // quick connectivity check (no ordering)
+    const ping = await client.from("value_bets").select("id").limit(1);
+    if(ping.error){
+      console.error("ping error:", ping.error);
+      setBetsStatus(`<span class="bad">Supabase error</span><br><b>${ping.error.message || ping.error}</b><br><span style="opacity:.75">Tip:</span> Check Settings → API → Project URL + anon/public key match app.js.`);
+      return;
+    }
+
+    const {data, error} = await client
+      .from("value_bets")
+      .select("*")
+      .order("created_at",{ascending:false});
+
+    if(error){
+      console.error("loadBets error:", error);
+      setBetsStatus(`<span class="bad">Supabase error</span><br><b>${error.message || error}</b>`);
+      betsAllRows = [];
+      renderBets([]);
+      return;
+    }
+
+    betsAllRows = data || [];
+    if(!betsAllRows.length){
+      setBetsStatus(`<span class="bad">No rows returned</span><br>Table: <b>value_bets</b> • URL: <b>${SUPABASE_URL}</b><br><span style="opacity:.75">You have rows in Supabase? Then you’re likely editing a different project or the key doesn’t match this project.</span>`);
+    }else{
+      setBetsStatus(`<span class="ok">Loaded</span> <b>${betsAllRows.length}</b> bet(s) • Sorting: <b>${(document.getElementById("betsSort")?.value)||"date_desc"}</b>`);
+    }
+    applyBetsSort();
+  }catch(err){
+    console.error("loadBets exception:", err);
+    const msg = (err && err.name === "AbortError") ? "Request timed out (8s)" : (err?.message || String(err));
+    setBetsStatus(`<span class="bad">Request failed</span><br><b>${msg}</b><br><span style="opacity:.75">Tip:</span> If it times out, your URL/key is wrong or the network is blocking Supabase.`);
+  }
+}
+
+// wire sort dropdown
+document.addEventListener("change", (e)=>{
+  if(e.target && e.target.id === "betsSort"){
+    applyBetsSort();
+  }
+});
+);
+}
+
+async function addToTracker(row, _skipAuth){
+  try{
+    const { data } = await client.auth.getUser();
+    const user = data && data.user ? data.user : null;
+
+    if(!user && !_skipAuth){
+      pendingAddRow = row;
+      openAuth();
+      setAuthMsg("Please log in to add bets to your tracker.", "bad");
+      return;
+    }
+    if(!user){
+      setAuthMsg("Not logged in.", "bad");
+      return;
+    }
+
+    const payload = {
+      user_id: user.id,
+      match: row.match,
+      market: row.market,
+      odds: row.odds,
+      match_date_date: row.bet_date || row.match_date_date || null,
+      stake: 10,
+      result: "pending"
+    };
+
+    const { error } = await client.from("bet_tracker").insert(payload);
+    if(error){
+      console.error(error);
+      alert("Could not add to tracker: " + error.message);
+      return;
+    }
+    alert("Added to tracker ✅");
+    if(typeof loadTracker === "function") loadTracker();
+  }catch(e){
+    console.error(e);
+    alert("Could not add to tracker.");
+  }
 });
 loadTracker();
 }
@@ -741,3 +1030,11 @@ if(startingInput){
     localStorage.setItem("starting_bankroll", this.value);
   });
 }
+
+
+// Ensure bets load on page ready
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof loadBets === "function") {
+    loadBets();
+  }
+});
